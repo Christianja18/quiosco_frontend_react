@@ -1,6 +1,7 @@
 import { useMutation } from '@tanstack/react-query'
-import { LockKeyhole, Mail, Store } from 'lucide-react'
+import { LockKeyhole, Mail } from 'lucide-react'
 import { useState } from 'react'
+import tortasGabyLogo from '../../assets/tortas-gaby-logo.svg'
 import { signInWithEmail } from './api'
 
 export const LoginPage = () => {
@@ -16,14 +17,12 @@ export const LoginPage = () => {
   return (
     <main className="login-shell">
       <section className="login-panel" aria-labelledby="login-title">
-        <div className="brand-mark" aria-hidden="true">
-          <Store size={30} />
-        </div>
+        <img className="login-logo" src={tortasGabyLogo} alt="Tortas Gaby" />
         <div>
-          <p className="eyebrow">Quiosco escolar</p>
+          <p className="eyebrow">Tortas Gaby</p>
           <h1 id="login-title">Ingreso al sistema</h1>
           <p className="muted">
-            Acceso para ventas rápidas, productos y control básico del día.
+            Acceso para ventas, pedidos, productos y control del dia.
           </p>
         </div>
 

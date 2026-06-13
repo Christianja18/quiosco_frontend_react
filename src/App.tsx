@@ -1,23 +1,44 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { LucideIcon } from 'lucide-react'
 import {
+  Banknote,
+  ClipboardList,
+  FileBarChart,
+  PackageCheck,
   LayoutDashboard,
   LoaderCircle,
   LogOut,
   Package,
+  Settings,
   ShoppingCart,
-  Store,
+  Users,
 } from 'lucide-react'
 import { useState } from 'react'
 import './App.css'
+import tortasGabyLogo from './assets/tortas-gaby-logo.svg'
 import { getProfile, signOut } from './features/auth/api'
 import { LoginPage } from './features/auth/LoginPage'
 import { useAuth } from './features/auth/useAuth'
+import { CashPage } from './features/cash/CashPage'
 import { DashboardPage } from './features/dashboard/DashboardPage'
+import { InventoryPage } from './features/inventory/InventoryPage'
+import { OrdersPage } from './features/orders/OrdersPage'
 import { ProductsPage } from './features/products/ProductsPage'
+import { ReportsPage } from './features/reports/ReportsPage'
 import { SalesPage } from './features/sales/SalesPage'
+import { SettingsPage } from './features/settings/SettingsPage'
+import { UsersPage } from './features/users/UsersPage'
 
-type AppView = 'dashboard' | 'sales' | 'products'
+type AppView =
+  | 'dashboard'
+  | 'sales'
+  | 'orders'
+  | 'products'
+  | 'inventory'
+  | 'cash'
+  | 'reports'
+  | 'users'
+  | 'settings'
 
 type NavigationItem = {
   readonly id: AppView
@@ -28,13 +49,19 @@ type NavigationItem = {
 const navigationItems: ReadonlyArray<NavigationItem> = [
   { id: 'dashboard', label: 'Panel', icon: LayoutDashboard },
   { id: 'sales', label: 'Venta', icon: ShoppingCart },
+  { id: 'orders', label: 'Pedidos', icon: ClipboardList },
   { id: 'products', label: 'Productos', icon: Package },
+  { id: 'inventory', label: 'Inventario', icon: PackageCheck },
+  { id: 'cash', label: 'Caja', icon: Banknote },
+  { id: 'reports', label: 'Reportes', icon: FileBarChart },
+  { id: 'users', label: 'Usuarios', icon: Users },
+  { id: 'settings', label: 'Config.', icon: Settings },
 ]
 
 const LoadingScreen = () => (
   <main className="center-screen" aria-label="Cargando aplicación">
     <LoaderCircle className="spin" size={32} />
-    <p>Cargando quiosco...</p>
+    <p>Cargando Tortas Gaby...</p>
   </main>
 )
 
@@ -75,7 +102,7 @@ function App() {
     return (
       <main className="center-screen">
         <section className="login-panel">
-          <Store size={32} />
+          <img className="login-logo compact" src={tortasGabyLogo} alt="" />
           <h1>Perfil no disponible</h1>
           <p className="muted">
             Tu usuario existe en Auth, pero no se pudo cargar el perfil en la
@@ -94,27 +121,32 @@ function App() {
   }
 
   const profile = profileQuery.data
+  const isSelfServiceUser = profile.role === 'profesor' || profile.role === 'alumno'
+  const visibleNavigationItems = isSelfServiceUser
+    ? navigationItems.filter((item) => item.id === 'orders')
+    : navigationItems
+  const activeView = isSelfServiceUser ? 'orders' : currentView
 
   return (
     <div className="app-shell">
       <aside className="sidebar" aria-label="Navegación principal">
         <div className="brand">
           <span className="brand-mark" aria-hidden="true">
-            <Store size={24} />
+            <img className="brand-logo" src={tortasGabyLogo} alt="" />
           </span>
           <div>
-            <strong>Quiosco Perú</strong>
-            <span>Sistema escolar</span>
+            <strong>Tortas Gaby</strong>
+            <span>Dulces y bocaditos</span>
           </div>
         </div>
 
         <nav className="nav-list">
-          {navigationItems.map((item) => {
+          {visibleNavigationItems.map((item) => {
             const Icon = item.icon
 
             return (
               <button
-                className={item.id === currentView ? 'nav-item active' : 'nav-item'}
+                className={item.id === activeView ? 'nav-item active' : 'nav-item'}
                 key={item.id}
                 type="button"
                 onClick={() => setCurrentView(item.id)}
@@ -149,9 +181,20 @@ function App() {
         </header>
 
         <main className="main-content">
-          {currentView === 'dashboard' ? <DashboardPage /> : null}
-          {currentView === 'sales' ? <SalesPage /> : null}
-          {currentView === 'products' ? <ProductsPage profile={profile} /> : null}
+          {activeView === 'dashboard' ? <DashboardPage /> : null}
+          {activeView === 'sales' ? <SalesPage /> : null}
+          {activeView === 'orders' ? (
+            <OrdersPage
+              profile={profile}
+              userEmail={auth.session.user.email ?? null}
+            />
+          ) : null}
+          {activeView === 'products' ? <ProductsPage profile={profile} /> : null}
+          {activeView === 'inventory' ? <InventoryPage /> : null}
+          {activeView === 'cash' ? <CashPage /> : null}
+          {activeView === 'reports' ? <ReportsPage /> : null}
+          {activeView === 'users' ? <UsersPage profile={profile} /> : null}
+          {activeView === 'settings' ? <SettingsPage /> : null}
         </main>
       </div>
     </div>

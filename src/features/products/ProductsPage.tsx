@@ -1,6 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Archive, CirclePlus, Package, Save } from 'lucide-react'
+import { Archive, CirclePlus, Package, Save, Search } from 'lucide-react'
 import { useMemo, useState } from 'react'
+import { Modal } from '../../shared/components/Modal'
+import type { Category, Product, Profile } from '../../shared/types/domain'
+import { formatCurrency } from '../../shared/utils/format'
 import {
   createCategory,
   createProduct,
@@ -8,8 +11,6 @@ import {
   getProducts,
   updateProduct,
 } from './api'
-import { formatCurrency } from '../../shared/utils/format'
-import type { Category, Product, Profile } from '../../shared/types/domain'
 
 type ProductFormState = {
   readonly name: string
@@ -38,6 +39,8 @@ export const ProductsPage = ({ profile }: ProductsPageProps) => {
   const queryClient = useQueryClient()
   const isAdmin = profile.role === 'admin'
   const [categoryName, setCategoryName] = useState('')
+  const [productSearch, setProductSearch] = useState('')
+  const [isProductModalOpen, setIsProductModalOpen] = useState(false)
   const [productForm, setProductForm] = useState<ProductFormState>(initialProductForm)
 
   const categoriesQuery = useQuery({
@@ -58,6 +61,19 @@ export const ProductsPage = ({ profile }: ProductsPageProps) => {
     [categories],
   )
 
+  const filteredProducts = useMemo(() => {
+    const normalized = productSearch.trim().toLowerCase()
+
+    if (!normalized) {
+      return products
+    }
+
+    return products.filter((product) => {
+      const categoryName = categoryById.get(product.category_id ?? 0) ?? ''
+      return `${product.name} ${categoryName}`.toLowerCase().includes(normalized)
+    })
+  }, [categoryById, productSearch, products])
+
   const categoryMutation = useMutation({
     mutationFn: createCategory,
     onSuccess: () => {
@@ -70,6 +86,7 @@ export const ProductsPage = ({ profile }: ProductsPageProps) => {
     mutationFn: createProduct,
     onSuccess: () => {
       setProductForm(initialProductForm)
+      setIsProductModalOpen(false)
       void queryClient.invalidateQueries({ queryKey: ['products'] })
       void queryClient.invalidateQueries({ queryKey: ['low-stock-products'] })
     },
@@ -100,224 +117,71 @@ export const ProductsPage = ({ profile }: ProductsPageProps) => {
     <section className="page-grid" aria-labelledby="products-title">
       <div className="page-heading">
         <div>
-          <p className="eyebrow">Catálogo</p>
-          <h1 id="products-title">Productos y categorías</h1>
+          <p className="eyebrow">Catalogo</p>
+          <h1 id="products-title">Productos y categorias</h1>
         </div>
+        {isAdmin ? (
+          <div className="page-actions">
+            <button
+              className="primary-button"
+              type="button"
+              onClick={() => setIsProductModalOpen(true)}
+            >
+              <Package size={18} />
+              Registrar producto
+            </button>
+          </div>
+        ) : null}
       </div>
 
       {!isAdmin ? (
         <p className="permission-banner">
-          Tu rol permite consultar productos. La creación y edición está reservada
+          Tu rol permite consultar productos. La creacion y edicion esta reservada
           para administradores.
         </p>
       ) : null}
 
-      <div className="content-grid two-columns">
-        <section className="panel" aria-labelledby="new-product-title">
-          <div className="panel-header">
-            <div>
-              <p className="eyebrow">Nuevo registro</p>
-              <h2 id="new-product-title">Crear producto</h2>
-            </div>
-            <Package size={20} />
-          </div>
-
-          <form
-            className="form-grid"
-            onSubmit={(event) => {
-              event.preventDefault()
-              if (!canCreateProduct) {
-                return
-              }
-
-              productMutation.mutate({
-                name: productForm.name.trim(),
-                category_id: productForm.categoryId
-                  ? Number(productForm.categoryId)
-                  : null,
-                price: Number(productForm.price),
-                stock: Number(productForm.stock),
-                min_stock: Number(productForm.minStock),
-                is_active: true,
-              })
-            }}
-          >
-            <label className="field wide">
-              <span>Nombre</span>
-              <input
-                value={productForm.name}
-                onChange={(event) =>
-                  setProductForm((current) => ({
-                    ...current,
-                    name: event.target.value,
-                  }))
-                }
-                placeholder="Empanada de pollo"
-                disabled={!isAdmin}
-              />
-            </label>
-
-            <label className="field wide">
-              <span>Categoría</span>
-              <select
-                value={productForm.categoryId}
-                onChange={(event) =>
-                  setProductForm((current) => ({
-                    ...current,
-                    categoryId: event.target.value,
-                  }))
-                }
-                disabled={!isAdmin}
-              >
-                <option value="">Sin categoría</option>
-                {categories.map((category) => (
-                  <option key={category.id} value={category.id}>
-                    {category.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label className="field">
-              <span>Precio S/</span>
-              <input
-                min="0.1"
-                step="0.1"
-                type="number"
-                value={productForm.price}
-                onChange={(event) =>
-                  setProductForm((current) => ({
-                    ...current,
-                    price: event.target.value,
-                  }))
-                }
-                disabled={!isAdmin}
-              />
-            </label>
-
-            <label className="field">
-              <span>Stock</span>
-              <input
-                min="0"
-                step="1"
-                type="number"
-                value={productForm.stock}
-                onChange={(event) =>
-                  setProductForm((current) => ({
-                    ...current,
-                    stock: event.target.value,
-                  }))
-                }
-                disabled={!isAdmin}
-              />
-            </label>
-
-            <label className="field">
-              <span>Stock mínimo</span>
-              <input
-                min="0"
-                step="1"
-                type="number"
-                value={productForm.minStock}
-                onChange={(event) =>
-                  setProductForm((current) => ({
-                    ...current,
-                    minStock: event.target.value,
-                  }))
-                }
-                disabled={!isAdmin}
-              />
-            </label>
-
-            <button
-              className="primary-button wide"
-              type="submit"
-              disabled={!canCreateProduct || productMutation.isPending}
-            >
-              <Save size={18} />
-              {productMutation.isPending ? 'Guardando...' : 'Guardar producto'}
-            </button>
-          </form>
-        </section>
-
-        <section className="panel" aria-labelledby="new-category-title">
-          <div className="panel-header">
-            <div>
-              <p className="eyebrow">Agrupación</p>
-              <h2 id="new-category-title">Crear categoría</h2>
-            </div>
-            <Archive size={20} />
-          </div>
-
-          <form
-            className="inline-form"
-            onSubmit={(event) => {
-              event.preventDefault()
-              if (canCreateCategory) {
-                categoryMutation.mutate(categoryName)
-              }
-            }}
-          >
-            <label className="field">
-              <span>Nombre</span>
-              <input
-                value={categoryName}
-                onChange={(event) => setCategoryName(event.target.value)}
-                placeholder="Bebidas"
-                disabled={!isAdmin}
-              />
-            </label>
-            <button
-              className="icon-button"
-              type="submit"
-              disabled={!canCreateCategory || categoryMutation.isPending}
-              aria-label="Crear categoría"
-              title="Crear categoría"
-            >
-              <CirclePlus size={20} />
-            </button>
-          </form>
-
-          <div className="chip-list" aria-label="Categorías registradas">
-            {categories.map((category) => (
-              <span className="soft-pill" key={category.id}>
-                {category.name}
-              </span>
-            ))}
-          </div>
-        </section>
-      </div>
-
       <section className="panel" aria-labelledby="products-list-title">
         <div className="panel-header">
           <div>
-            <p className="eyebrow">Inventario simple</p>
-            <h2 id="products-list-title">Listado de productos</h2>
+            <p className="eyebrow">Listado</p>
+            <h2 id="products-list-title">Productos registrados</h2>
           </div>
+        </div>
+
+        <div className="list-toolbar">
+          <label className="search-box">
+            <Search size={18} aria-hidden="true" />
+            <input
+              value={productSearch}
+              onChange={(event) => setProductSearch(event.target.value)}
+              placeholder="Buscar producto"
+            />
+          </label>
         </div>
 
         {productsQuery.isLoading ? (
           <p className="muted">Cargando productos...</p>
-        ) : products.length === 0 ? (
-          <p className="empty-state">Crea tus primeros productos para vender.</p>
+        ) : filteredProducts.length === 0 ? (
+          <p className="empty-state">No hay productos para mostrar.</p>
         ) : (
           <div className="table-wrap">
             <table>
               <thead>
                 <tr>
                   <th>Producto</th>
-                  <th>Categoría</th>
+                  <th>Categoria</th>
                   <th>Precio</th>
                   <th>Stock</th>
                   <th>Estado</th>
-                  <th>Acción</th>
+                  <th>Accion</th>
                 </tr>
               </thead>
               <tbody>
-                {products.map((product) => (
+                {filteredProducts.map((product) => (
                   <tr key={product.id}>
                     <td>{product.name}</td>
-                    <td>{categoryById.get(product.category_id ?? 0) ?? 'Sin categoría'}</td>
+                    <td>{categoryById.get(product.category_id ?? 0) ?? 'Sin categoria'}</td>
                     <td>{formatCurrency(product.price)}</td>
                     <td>
                       <span
@@ -357,6 +221,184 @@ export const ProductsPage = ({ profile }: ProductsPageProps) => {
           </div>
         )}
       </section>
+
+      {isProductModalOpen ? (
+        <Modal
+          eyebrow="Registro"
+          title="Nuevo producto"
+          onClose={() => setIsProductModalOpen(false)}
+        >
+          <div className="content-grid two-columns">
+            <section className="panel flat-panel" aria-labelledby="new-product-title">
+              <div className="panel-header">
+                <div>
+                  <p className="eyebrow">Producto</p>
+                  <h2 id="new-product-title">Datos del producto</h2>
+                </div>
+                <Package size={20} />
+              </div>
+
+              <form
+                className="form-grid"
+                onSubmit={(event) => {
+                  event.preventDefault()
+                  if (!canCreateProduct) {
+                    return
+                  }
+
+                  productMutation.mutate({
+                    name: productForm.name.trim(),
+                    category_id: productForm.categoryId
+                      ? Number(productForm.categoryId)
+                      : null,
+                    price: Number(productForm.price),
+                    stock: Number(productForm.stock),
+                    min_stock: Number(productForm.minStock),
+                    is_active: true,
+                  })
+                }}
+              >
+                <label className="field wide">
+                  <span>Nombre</span>
+                  <input
+                    value={productForm.name}
+                    onChange={(event) =>
+                      setProductForm((current) => ({
+                        ...current,
+                        name: event.target.value,
+                      }))
+                    }
+                    placeholder="Cupcake de vainilla"
+                  />
+                </label>
+
+                <label className="field wide">
+                  <span>Categoria</span>
+                  <select
+                    value={productForm.categoryId}
+                    onChange={(event) =>
+                      setProductForm((current) => ({
+                        ...current,
+                        categoryId: event.target.value,
+                      }))
+                    }
+                  >
+                    <option value="">Sin categoria</option>
+                    {categories.map((category) => (
+                      <option key={category.id} value={category.id}>
+                        {category.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="field">
+                  <span>Precio S/</span>
+                  <input
+                    min="0.1"
+                    step="0.1"
+                    type="number"
+                    value={productForm.price}
+                    onChange={(event) =>
+                      setProductForm((current) => ({
+                        ...current,
+                        price: event.target.value,
+                      }))
+                    }
+                  />
+                </label>
+
+                <label className="field">
+                  <span>Stock</span>
+                  <input
+                    min="0"
+                    step="1"
+                    type="number"
+                    value={productForm.stock}
+                    onChange={(event) =>
+                      setProductForm((current) => ({
+                        ...current,
+                        stock: event.target.value,
+                      }))
+                    }
+                  />
+                </label>
+
+                <label className="field">
+                  <span>Stock minimo</span>
+                  <input
+                    min="0"
+                    step="1"
+                    type="number"
+                    value={productForm.minStock}
+                    onChange={(event) =>
+                      setProductForm((current) => ({
+                        ...current,
+                        minStock: event.target.value,
+                      }))
+                    }
+                  />
+                </label>
+
+                <button
+                  className="primary-button wide"
+                  type="submit"
+                  disabled={!canCreateProduct || productMutation.isPending}
+                >
+                  <Save size={18} />
+                  {productMutation.isPending ? 'Guardando...' : 'Guardar producto'}
+                </button>
+              </form>
+            </section>
+
+            <section className="panel flat-panel" aria-labelledby="new-category-title">
+              <div className="panel-header">
+                <div>
+                  <p className="eyebrow">Agrupacion</p>
+                  <h2 id="new-category-title">Categoria nueva</h2>
+                </div>
+                <Archive size={20} />
+              </div>
+
+              <form
+                className="inline-form"
+                onSubmit={(event) => {
+                  event.preventDefault()
+                  if (canCreateCategory) {
+                    categoryMutation.mutate(categoryName)
+                  }
+                }}
+              >
+                <label className="field">
+                  <span>Nombre</span>
+                  <input
+                    value={categoryName}
+                    onChange={(event) => setCategoryName(event.target.value)}
+                    placeholder="Dulces"
+                  />
+                </label>
+                <button
+                  className="icon-button"
+                  type="submit"
+                  disabled={!canCreateCategory || categoryMutation.isPending}
+                  aria-label="Crear categoria"
+                  title="Crear categoria"
+                >
+                  <CirclePlus size={20} />
+                </button>
+              </form>
+
+              <div className="chip-list" aria-label="Categorias registradas">
+                {categories.map((category) => (
+                  <span className="soft-pill" key={category.id}>
+                    {category.name}
+                  </span>
+                ))}
+              </div>
+            </section>
+          </div>
+        </Modal>
+      ) : null}
     </section>
   )
 }

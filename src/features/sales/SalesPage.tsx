@@ -15,8 +15,6 @@ const paymentMethods: ReadonlyArray<PaymentMethod> = [
   'cash',
   'yape',
   'plin',
-  'card',
-  'transfer',
 ]
 
 const emptyProducts: ReadonlyArray<Product> = []

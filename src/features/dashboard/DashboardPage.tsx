@@ -32,7 +32,7 @@ export const DashboardPage = () => {
       <div className="page-heading">
         <div>
           <p className="eyebrow">Operación del día</p>
-          <h1 id="dashboard-title">Panel del quiosco</h1>
+          <h1 id="dashboard-title">Panel de Tortas Gaby</h1>
         </div>
       </div>
 

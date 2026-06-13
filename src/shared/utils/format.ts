@@ -14,8 +14,6 @@ export const formatDateTime = (value: string): string =>
 
 export const paymentMethodLabels: Record<PaymentMethod, string> = {
   cash: 'Efectivo',
-  card: 'Tarjeta',
   yape: 'Yape',
   plin: 'Plin',
-  transfer: 'Transferencia',
 }
