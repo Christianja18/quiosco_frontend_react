@@ -62,7 +62,16 @@ export const getOrders = async (): Promise<ReadonlyArray<OrderWithDetails>> => {
     .from('orders_with_details')
     .select('*')
     .order('created_at', { ascending: false })
-    .limit(40)
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  return data
+}
+
+export const getMyOrders = async (): Promise<ReadonlyArray<OrderWithDetails>> => {
+  const { data, error } = await supabase.rpc('my_orders_with_details')
 
   if (error) {
     throw new Error(error.message)

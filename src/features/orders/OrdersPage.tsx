@@ -34,6 +34,7 @@ import {
   createOrder,
   getConsumers,
   getConsumerTypes,
+  getMyOrders,
   getOrderDetails,
   getOrders,
   reserveOrder,
@@ -141,8 +142,8 @@ export const OrdersPage = ({ profile, userEmail }: OrdersPageProps) => {
   })
 
   const ordersQuery = useQuery({
-    queryKey: ['orders'],
-    queryFn: getOrders,
+    queryKey: ['orders', isSelfService ? 'mine' : 'all', profile.id],
+    queryFn: () => (isSelfService ? getMyOrders() : getOrders()),
   })
 
   const orderDetailsQuery = useQuery({
@@ -180,27 +181,18 @@ export const OrdersPage = ({ profile, userEmail }: OrdersPageProps) => {
   )
 
   const visibleOrders = useMemo(() => {
-    const scopedOrders = isSelfService
-      ? orders.filter(
-          (order) =>
-            order.user_id === profile.id ||
-            (normalizedUserEmail !== null &&
-              order.email?.toLowerCase() === normalizedUserEmail),
-        )
-      : orders
-
     const normalized = orderSearch.trim().toLowerCase()
 
     if (!normalized) {
-      return scopedOrders
+      return orders
     }
 
-    return scopedOrders.filter((order) =>
+    return orders.filter((order) =>
       `${order.first_names} ${order.last_names} ${order.status_name} ${order.notes ?? ''}`
         .toLowerCase()
         .includes(normalized),
     )
-  }, [isSelfService, normalizedUserEmail, orderSearch, orders, profile.id])
+  }, [orderSearch, orders])
 
   const filteredConsumers = useMemo(() => {
     const normalized = consumerSearch.trim().toLowerCase()

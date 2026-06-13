@@ -405,6 +405,10 @@ export type Database = {
         }
         Returns: number
       }
+      my_orders_with_details: {
+        Args: Record<string, never>
+        Returns: Database['public']['Views']['orders_with_details']['Row'][]
+      }
       complete_order: {
         Args: {
           p_order_id: number
