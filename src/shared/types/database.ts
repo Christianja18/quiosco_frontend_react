@@ -398,6 +398,13 @@ export type Database = {
         }
         Returns: number
       }
+      reserve_order: {
+        Args: {
+          p_items: Json
+          p_notes?: string | null
+        }
+        Returns: number
+      }
       complete_order: {
         Args: {
           p_order_id: number

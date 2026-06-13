@@ -109,6 +109,27 @@ export const createOrder = async (
   return data
 }
 
+export const reserveOrder = async (
+  items: ReadonlyArray<SaleItemInput>,
+  notes: string | null,
+): Promise<number> => {
+  const payload: Json = items.map((item) => ({
+    product_id: item.productId,
+    quantity: item.quantity,
+  }))
+
+  const { data, error } = await supabase.rpc('reserve_order', {
+    p_items: payload,
+    p_notes: notes,
+  })
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  return data
+}
+
 export const completeOrder = async (
   orderId: number,
   paymentMethod: PaymentMethod,

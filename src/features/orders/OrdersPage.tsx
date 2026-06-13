@@ -36,6 +36,7 @@ import {
   getConsumerTypes,
   getOrderDetails,
   getOrders,
+  reserveOrder,
 } from './api'
 
 const emptyProducts: ReadonlyArray<Product> = []
@@ -273,14 +274,22 @@ export const OrdersPage = ({ profile, userEmail }: OrdersPageProps) => {
 
   const orderMutation = useMutation({
     mutationFn: () =>
-      createOrder(
-        isSelfService ? selfConsumer?.id ?? 0 : selectedConsumerId ?? 0,
-        cart.map((item) => ({
-          productId: item.product.id,
-          quantity: item.quantity,
-        })),
-        toNullableText(notes),
-      ),
+      isSelfService
+        ? reserveOrder(
+            cart.map((item) => ({
+              productId: item.product.id,
+              quantity: item.quantity,
+            })),
+            toNullableText(notes),
+          )
+        : createOrder(
+            selectedConsumerId ?? 0,
+            cart.map((item) => ({
+              productId: item.product.id,
+              quantity: item.quantity,
+            })),
+            toNullableText(notes),
+          ),
     onSuccess: () => {
       resetOrderForm()
       setIsOrderModalOpen(false)
@@ -332,7 +341,7 @@ export const OrdersPage = ({ profile, userEmail }: OrdersPageProps) => {
             onClick={() => setIsOrderModalOpen(true)}
           >
             <ClipboardList size={18} />
-            Registrar pedido
+            {isSelfService ? 'Reservar pedido' : 'Registrar pedido'}
           </button>
         </div>
       </div>
@@ -490,7 +499,7 @@ export const OrdersPage = ({ profile, userEmail }: OrdersPageProps) => {
       {isOrderModalOpen ? (
         <Modal
           eyebrow="Registro"
-          title="Nuevo pedido"
+          title={isSelfService ? 'Nueva reserva' : 'Nuevo pedido'}
           onClose={() => setIsOrderModalOpen(false)}
         >
           <div className="order-modal-grid">
@@ -629,7 +638,7 @@ export const OrdersPage = ({ profile, userEmail }: OrdersPageProps) => {
               </section>
             ) : (
               <p className="selected-consumer">
-                Pedido para {profile.full_name}
+                Reserva para {profile.full_name}
                 {normalizedUserEmail ? ` (${normalizedUserEmail})` : ''}
               </p>
             )}
@@ -744,6 +753,9 @@ export const OrdersPage = ({ profile, userEmail }: OrdersPageProps) => {
           {orderMutation.isError ? (
             <p className="error-message" role="alert">
               No se pudo crear el pedido.
+              {orderMutation.error instanceof Error
+                ? ` ${orderMutation.error.message}`
+                : ''}
             </p>
           ) : null}
 
@@ -766,7 +778,11 @@ export const OrdersPage = ({ profile, userEmail }: OrdersPageProps) => {
               disabled={!canCreateOrder || orderMutation.isPending}
               onClick={() => orderMutation.mutate()}
             >
-              {orderMutation.isPending ? 'Registrando...' : 'Registrar pedido'}
+              {orderMutation.isPending
+                ? 'Registrando...'
+                : isSelfService
+                  ? 'Reservar pedido'
+                  : 'Registrar pedido'}
             </button>
           </div>
         </Modal>
