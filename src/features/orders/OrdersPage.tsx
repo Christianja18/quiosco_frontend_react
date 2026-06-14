@@ -8,7 +8,7 @@ import {
   Search,
   XCircle,
 } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Modal } from '../../shared/components/Modal'
 import type {
   CartItem,
@@ -260,6 +260,33 @@ export const OrdersPage = ({ profile, userEmail }: OrdersPageProps) => {
       void queryClient.invalidateQueries({ queryKey: ['orders'] })
     },
   })
+
+  useEffect(() => {
+    if (!orderMutation.isError) {
+      return undefined
+    }
+
+    const timeoutId = window.setTimeout(() => orderMutation.reset(), 5000)
+    return () => window.clearTimeout(timeoutId)
+  }, [orderMutation])
+
+  useEffect(() => {
+    if (!completeMutation.isError) {
+      return undefined
+    }
+
+    const timeoutId = window.setTimeout(() => completeMutation.reset(), 5000)
+    return () => window.clearTimeout(timeoutId)
+  }, [completeMutation])
+
+  useEffect(() => {
+    if (!cancelMutation.isError) {
+      return undefined
+    }
+
+    const timeoutId = window.setTimeout(() => cancelMutation.reset(), 5000)
+    return () => window.clearTimeout(timeoutId)
+  }, [cancelMutation])
 
   const canCreateOrder =
     (isSelfService || selectedConsumerId !== null) && cart.length > 0

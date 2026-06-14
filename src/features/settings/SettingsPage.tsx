@@ -1,5 +1,5 @@
 import { Save, Settings } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   readLocalSettings,
   writeLocalSettings,
@@ -9,6 +9,15 @@ import {
 export const SettingsPage = () => {
   const [settings, setSettings] = useState<LocalSettings>(() => readLocalSettings())
   const [saved, setSaved] = useState(false)
+
+  useEffect(() => {
+    if (!saved) {
+      return undefined
+    }
+
+    const timeoutId = window.setTimeout(() => setSaved(false), 5000)
+    return () => window.clearTimeout(timeoutId)
+  }, [saved])
 
   return (
     <section className="page-grid" aria-labelledby="settings-title">

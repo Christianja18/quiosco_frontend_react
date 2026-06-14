@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Minus, Plus, Search, ShoppingCart, Trash2 } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { getCategories, getProducts } from '../products/api'
 import { registerSale } from './api'
 import { formatCurrency, paymentMethodLabels } from '../../shared/utils/format'
@@ -106,6 +106,15 @@ export const SalesPage = () => {
       void queryClient.invalidateQueries({ queryKey: ['recent-sales'] })
     },
   })
+
+  useEffect(() => {
+    if (!saleMutation.isError && !saleMutation.isSuccess) {
+      return undefined
+    }
+
+    const timeoutId = window.setTimeout(() => saleMutation.reset(), 5000)
+    return () => window.clearTimeout(timeoutId)
+  }, [saleMutation])
 
   return (
     <section className="sales-layout" aria-labelledby="sales-title">

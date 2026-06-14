@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { AlertTriangle, Clock3, PackageSearch, ReceiptText } from 'lucide-react'
+import { useState } from 'react'
 import {
   getDashboardToday,
   getLowStockProducts,
@@ -7,7 +8,10 @@ import {
 } from './api'
 import { formatCurrency, formatDateTime, paymentMethodLabels } from '../../shared/utils/format'
 
+const pageSize = 5
+
 export const DashboardPage = () => {
+  const [recentSalesPage, setRecentSalesPage] = useState(1)
   const todayQuery = useQuery({
     queryKey: ['dashboard-today'],
     queryFn: getDashboardToday,
@@ -26,6 +30,12 @@ export const DashboardPage = () => {
   const today = todayQuery.data
   const lowStock = lowStockQuery.data ?? []
   const recentSales = recentSalesQuery.data ?? []
+  const recentSalesPageCount = Math.max(1, Math.ceil(recentSales.length / pageSize))
+  const safeRecentSalesPage = Math.min(recentSalesPage, recentSalesPageCount)
+  const paginatedRecentSales = recentSales.slice(
+    (safeRecentSalesPage - 1) * pageSize,
+    safeRecentSalesPage * pageSize,
+  )
 
   return (
     <section className="page-grid" aria-labelledby="dashboard-title">
@@ -118,7 +128,7 @@ export const DashboardPage = () => {
             <p className="empty-state">Aún no hay ventas registradas.</p>
           ) : (
             <div className="list-stack">
-              {recentSales.map((sale) => (
+              {paginatedRecentSales.map((sale) => (
                 <article className="list-row" key={sale.id}>
                   <div>
                     <strong>{formatCurrency(sale.total)}</strong>
@@ -129,6 +139,33 @@ export const DashboardPage = () => {
                   </span>
                 </article>
               ))}
+              <div className="pagination-bar">
+                <span>
+                  Página {safeRecentSalesPage} de {recentSalesPageCount}
+                </span>
+                <button
+                  className="ghost-button"
+                  type="button"
+                  disabled={safeRecentSalesPage === 1}
+                  onClick={() =>
+                    setRecentSalesPage((current) => Math.max(1, current - 1))
+                  }
+                >
+                  Anterior
+                </button>
+                <button
+                  className="ghost-button"
+                  type="button"
+                  disabled={safeRecentSalesPage === recentSalesPageCount}
+                  onClick={() =>
+                    setRecentSalesPage((current) =>
+                      Math.min(recentSalesPageCount, current + 1),
+                    )
+                  }
+                >
+                  Siguiente
+                </button>
+              </div>
             </div>
           )}
         </section>

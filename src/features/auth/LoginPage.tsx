@@ -1,6 +1,6 @@
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { LockKeyhole, Mail, Save, UserPlus } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import tortasGabyLogo from '../../assets/tortas-gaby-logo.svg'
 import { Modal } from '../../shared/components/Modal'
 import type { ConsumerType } from '../../shared/types/domain'
@@ -116,6 +116,33 @@ export const LoginPage = () => {
       setRegisterMessage('Registro enviado correctamente. Ya puedes iniciar sesión.')
     },
   })
+
+  useEffect(() => {
+    if (!registerMessage) {
+      return undefined
+    }
+
+    const timeoutId = window.setTimeout(() => setRegisterMessage(''), 5000)
+    return () => window.clearTimeout(timeoutId)
+  }, [registerMessage])
+
+  useEffect(() => {
+    if (!createConsumerMutation.isError) {
+      return undefined
+    }
+
+    const timeoutId = window.setTimeout(() => createConsumerMutation.reset(), 5000)
+    return () => window.clearTimeout(timeoutId)
+  }, [createConsumerMutation])
+
+  useEffect(() => {
+    if (!signInMutation.isError) {
+      return undefined
+    }
+
+    const timeoutId = window.setTimeout(() => signInMutation.reset(), 5000)
+    return () => window.clearTimeout(timeoutId)
+  }, [signInMutation])
 
   const consumerTypes = consumerTypesQuery.data ?? emptyConsumerTypes
   const selectedConsumerType = useMemo(

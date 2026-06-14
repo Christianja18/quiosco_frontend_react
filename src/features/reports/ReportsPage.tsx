@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { BarChart3, ClipboardList, PackageSearch, ReceiptText } from 'lucide-react'
+import { useState } from 'react'
 import {
   getReportLowStock,
   getReportOrders,
@@ -8,7 +9,11 @@ import {
 } from './api'
 import { formatCurrency, formatDateTime, paymentMethodLabels } from '../../shared/utils/format'
 
+const pageSize = 5
+
 export const ReportsPage = () => {
+  const [stockPage, setStockPage] = useState(1)
+  const [ordersPage, setOrdersPage] = useState(1)
   const salesQuery = useQuery({
     queryKey: ['report-sales'],
     queryFn: getReportSales,
@@ -31,6 +36,18 @@ export const ReportsPage = () => {
   const lowStock = lowStockQuery.data ?? []
   const orders = ordersQuery.data ?? []
   const totalSold = sales.reduce((sum, sale) => sum + sale.total, 0)
+  const stockPageCount = Math.max(1, Math.ceil(products.length / pageSize))
+  const ordersPageCount = Math.max(1, Math.ceil(orders.length / pageSize))
+  const safeStockPage = Math.min(stockPage, stockPageCount)
+  const safeOrdersPage = Math.min(ordersPage, ordersPageCount)
+  const paginatedProducts = products.slice(
+    (safeStockPage - 1) * pageSize,
+    safeStockPage * pageSize,
+  )
+  const paginatedOrders = orders.slice(
+    (safeOrdersPage - 1) * pageSize,
+    safeOrdersPage * pageSize,
+  )
 
   return (
     <section className="page-grid" aria-labelledby="reports-title">
@@ -102,7 +119,7 @@ export const ReportsPage = () => {
             </div>
           </div>
           <div className="list-stack">
-            {products.slice(0, 10).map((product) => (
+            {paginatedProducts.map((product) => (
               <article className="list-row" key={product.id}>
                 <div>
                   <strong>{product.name}</strong>
@@ -119,6 +136,29 @@ export const ReportsPage = () => {
                 </span>
               </article>
             ))}
+            <div className="pagination-bar">
+              <span>
+                Página {safeStockPage} de {stockPageCount}
+              </span>
+              <button
+                className="ghost-button"
+                type="button"
+                disabled={safeStockPage === 1}
+                onClick={() => setStockPage((current) => Math.max(1, current - 1))}
+              >
+                Anterior
+              </button>
+              <button
+                className="ghost-button"
+                type="button"
+                disabled={safeStockPage === stockPageCount}
+                onClick={() =>
+                  setStockPage((current) => Math.min(stockPageCount, current + 1))
+                }
+              >
+                Siguiente
+              </button>
+            </div>
           </div>
         </section>
       </div>
@@ -142,7 +182,7 @@ export const ReportsPage = () => {
               </tr>
             </thead>
             <tbody>
-              {orders.slice(0, 12).map((order) => (
+              {paginatedOrders.map((order) => (
                 <tr key={order.id}>
                   <td>
                     {order.first_names} {order.last_names}
@@ -158,6 +198,29 @@ export const ReportsPage = () => {
               ))}
             </tbody>
           </table>
+          <div className="pagination-bar">
+            <span>
+              Página {safeOrdersPage} de {ordersPageCount}
+            </span>
+            <button
+              className="ghost-button"
+              type="button"
+              disabled={safeOrdersPage === 1}
+              onClick={() => setOrdersPage((current) => Math.max(1, current - 1))}
+            >
+              Anterior
+            </button>
+            <button
+              className="ghost-button"
+              type="button"
+              disabled={safeOrdersPage === ordersPageCount}
+              onClick={() =>
+                setOrdersPage((current) => Math.min(ordersPageCount, current + 1))
+              }
+            >
+              Siguiente
+            </button>
+          </div>
         </div>
       </section>
     </section>

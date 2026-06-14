@@ -107,7 +107,7 @@ export const InventoryPage = () => {
             <label className="field">
               <span>Stock actual</span>
               <input
-                min="1"
+                min="0"
                 step="1"
                 type="number"
                 value={stockForm.stock}
@@ -123,7 +123,7 @@ export const InventoryPage = () => {
             <label className="field">
               <span>Stock mínimo</span>
               <input
-                min="0"
+                min="1"
                 step="1"
                 type="number"
                 value={stockForm.minStock}

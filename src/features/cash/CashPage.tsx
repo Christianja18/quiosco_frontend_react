@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { Banknote, CircleDollarSign } from 'lucide-react'
+import { useState } from 'react'
 import { getReportSales } from '../reports/api'
 import type { PaymentMethod, Sale } from '../../shared/types/domain'
 import {
@@ -9,6 +10,7 @@ import {
 } from '../../shared/utils/format'
 
 const emptySales: ReadonlyArray<Sale> = []
+const pageSize = 5
 const paymentMethods: ReadonlyArray<PaymentMethod> = [
   'cash',
   'yape',
@@ -27,6 +29,7 @@ const isToday = (value: string): boolean => {
 }
 
 export const CashPage = () => {
+  const [todaySalesPage, setTodaySalesPage] = useState(1)
   const salesQuery = useQuery({
     queryKey: ['report-sales'],
     queryFn: getReportSales,
@@ -35,6 +38,12 @@ export const CashPage = () => {
   const sales = salesQuery.data ?? emptySales
   const todaySales = sales.filter((sale) => isToday(sale.created_at))
   const total = todaySales.reduce((sum, sale) => sum + sale.total, 0)
+  const todaySalesPageCount = Math.max(1, Math.ceil(todaySales.length / pageSize))
+  const safeTodaySalesPage = Math.min(todaySalesPage, todaySalesPageCount)
+  const paginatedTodaySales = todaySales.slice(
+    (safeTodaySalesPage - 1) * pageSize,
+    safeTodaySalesPage * pageSize,
+  )
 
   return (
     <section className="page-grid" aria-labelledby="cash-title">
@@ -113,7 +122,7 @@ export const CashPage = () => {
             <p className="empty-state">Aún no hay ventas hoy.</p>
           ) : (
             <div className="list-stack">
-              {todaySales.slice(0, 12).map((sale) => (
+              {paginatedTodaySales.map((sale) => (
                 <article className="list-row" key={sale.id}>
                   <div>
                     <strong>{formatCurrency(sale.total)}</strong>
@@ -124,6 +133,33 @@ export const CashPage = () => {
                   </span>
                 </article>
               ))}
+              <div className="pagination-bar">
+                <span>
+                  Página {safeTodaySalesPage} de {todaySalesPageCount}
+                </span>
+                <button
+                  className="ghost-button"
+                  type="button"
+                  disabled={safeTodaySalesPage === 1}
+                  onClick={() =>
+                    setTodaySalesPage((current) => Math.max(1, current - 1))
+                  }
+                >
+                  Anterior
+                </button>
+                <button
+                  className="ghost-button"
+                  type="button"
+                  disabled={safeTodaySalesPage === todaySalesPageCount}
+                  onClick={() =>
+                    setTodaySalesPage((current) =>
+                      Math.min(todaySalesPageCount, current + 1),
+                    )
+                  }
+                >
+                  Siguiente
+                </button>
+              </div>
             </div>
           )}
         </section>

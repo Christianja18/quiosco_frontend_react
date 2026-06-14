@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Save, Search, UserPlus, Users } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Modal } from '../../shared/components/Modal'
 import type {
   Consumer,
@@ -159,6 +159,24 @@ export const UsersPage = ({ profile }: UsersPageProps) => {
       void queryClient.invalidateQueries({ queryKey: ['consumers'] })
     },
   })
+
+  useEffect(() => {
+    if (!createUserMutation.isError) {
+      return undefined
+    }
+
+    const timeoutId = window.setTimeout(() => createUserMutation.reset(), 5000)
+    return () => window.clearTimeout(timeoutId)
+  }, [createUserMutation])
+
+  useEffect(() => {
+    if (!createConsumerMutation.isError) {
+      return undefined
+    }
+
+    const timeoutId = window.setTimeout(() => createConsumerMutation.reset(), 5000)
+    return () => window.clearTimeout(timeoutId)
+  }, [createConsumerMutation])
 
   const profiles = profilesQuery.data ?? emptyProfiles
   const consumers = consumersQuery.data ?? emptyConsumers
