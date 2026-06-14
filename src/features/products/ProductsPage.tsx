@@ -25,11 +25,12 @@ const initialProductForm: ProductFormState = {
   categoryId: '',
   price: '',
   stock: '0',
-  minStock: '5',
+  minStock: '1',
 }
 
 const emptyCategories: ReadonlyArray<Category> = []
 const emptyProducts: ReadonlyArray<Product> = []
+const pageSize = 5
 
 type ProductsPageProps = {
   readonly profile: Profile
@@ -40,6 +41,7 @@ export const ProductsPage = ({ profile }: ProductsPageProps) => {
   const isAdmin = profile.role === 'admin'
   const [categoryName, setCategoryName] = useState('')
   const [productSearch, setProductSearch] = useState('')
+  const [productPage, setProductPage] = useState(1)
   const [isProductModalOpen, setIsProductModalOpen] = useState(false)
   const [productForm, setProductForm] = useState<ProductFormState>(initialProductForm)
 
@@ -73,6 +75,13 @@ export const ProductsPage = ({ profile }: ProductsPageProps) => {
       return `${product.name} ${categoryName}`.toLowerCase().includes(normalized)
     })
   }, [categoryById, productSearch, products])
+
+  const productPageCount = Math.max(1, Math.ceil(filteredProducts.length / pageSize))
+  const safeProductPage = Math.min(productPage, productPageCount)
+  const paginatedProducts = filteredProducts.slice(
+    (safeProductPage - 1) * pageSize,
+    safeProductPage * pageSize,
+  )
 
   const categoryMutation = useMutation({
     mutationFn: createCategory,
@@ -111,14 +120,14 @@ export const ProductsPage = ({ profile }: ProductsPageProps) => {
     productForm.name.trim().length >= 2 &&
     Number(productForm.price) > 0 &&
     Number(productForm.stock) >= 0 &&
-    Number(productForm.minStock) >= 0
+    Number(productForm.minStock) >= 1
 
   return (
     <section className="page-grid" aria-labelledby="products-title">
       <div className="page-heading">
         <div>
-          <p className="eyebrow">Catalogo</p>
-          <h1 id="products-title">Productos y categorias</h1>
+          <p className="eyebrow">Catálogo</p>
+          <h1 id="products-title">Productos y categorías</h1>
         </div>
         {isAdmin ? (
           <div className="page-actions">
@@ -136,7 +145,7 @@ export const ProductsPage = ({ profile }: ProductsPageProps) => {
 
       {!isAdmin ? (
         <p className="permission-banner">
-          Tu rol permite consultar productos. La creacion y edicion esta reservada
+          Tu rol permite consultar productos. La creación y edición está reservada
           para administradores.
         </p>
       ) : null}
@@ -154,7 +163,10 @@ export const ProductsPage = ({ profile }: ProductsPageProps) => {
             <Search size={18} aria-hidden="true" />
             <input
               value={productSearch}
-              onChange={(event) => setProductSearch(event.target.value)}
+              onChange={(event) => {
+                setProductSearch(event.target.value)
+                setProductPage(1)
+              }}
               placeholder="Buscar producto"
             />
           </label>
@@ -170,18 +182,18 @@ export const ProductsPage = ({ profile }: ProductsPageProps) => {
               <thead>
                 <tr>
                   <th>Producto</th>
-                  <th>Categoria</th>
+                  <th>Categoría</th>
                   <th>Precio</th>
                   <th>Stock</th>
                   <th>Estado</th>
-                  <th>Accion</th>
+                  <th>Acción</th>
                 </tr>
               </thead>
               <tbody>
-                {filteredProducts.map((product) => (
+                {paginatedProducts.map((product) => (
                   <tr key={product.id}>
                     <td>{product.name}</td>
-                    <td>{categoryById.get(product.category_id ?? 0) ?? 'Sin categoria'}</td>
+                    <td>{categoryById.get(product.category_id ?? 0) ?? 'Sin categoría'}</td>
                     <td>{formatCurrency(product.price)}</td>
                     <td>
                       <span
@@ -218,6 +230,31 @@ export const ProductsPage = ({ profile }: ProductsPageProps) => {
                 ))}
               </tbody>
             </table>
+            <div className="pagination-bar">
+              <span>
+                Página {safeProductPage} de {productPageCount}
+              </span>
+              <button
+                className="ghost-button"
+                type="button"
+                disabled={safeProductPage === 1}
+                onClick={() => setProductPage((current) => Math.max(1, current - 1))}
+              >
+                Anterior
+              </button>
+              <button
+                className="ghost-button"
+                type="button"
+                disabled={safeProductPage === productPageCount}
+                onClick={() =>
+                  setProductPage((current) =>
+                    Math.min(productPageCount, current + 1),
+                  )
+                }
+              >
+                Siguiente
+              </button>
+            </div>
           </div>
         )}
       </section>
@@ -273,7 +310,7 @@ export const ProductsPage = ({ profile }: ProductsPageProps) => {
                 </label>
 
                 <label className="field wide">
-                  <span>Categoria</span>
+                  <span>Categoría</span>
                   <select
                     value={productForm.categoryId}
                     onChange={(event) =>
@@ -283,7 +320,7 @@ export const ProductsPage = ({ profile }: ProductsPageProps) => {
                       }))
                     }
                   >
-                    <option value="">Sin categoria</option>
+                    <option value="">Sin categoría</option>
                     {categories.map((category) => (
                       <option key={category.id} value={category.id}>
                         {category.name}
@@ -325,9 +362,9 @@ export const ProductsPage = ({ profile }: ProductsPageProps) => {
                 </label>
 
                 <label className="field">
-                  <span>Stock minimo</span>
+                  <span>Stock mínimo</span>
                   <input
-                    min="0"
+                    min="1"
                     step="1"
                     type="number"
                     value={productForm.minStock}
@@ -354,8 +391,8 @@ export const ProductsPage = ({ profile }: ProductsPageProps) => {
             <section className="panel flat-panel" aria-labelledby="new-category-title">
               <div className="panel-header">
                 <div>
-                  <p className="eyebrow">Agrupacion</p>
-                  <h2 id="new-category-title">Categoria nueva</h2>
+                  <p className="eyebrow">Agrupación</p>
+                  <h2 id="new-category-title">Categoría nueva</h2>
                 </div>
                 <Archive size={20} />
               </div>
@@ -381,14 +418,14 @@ export const ProductsPage = ({ profile }: ProductsPageProps) => {
                   className="icon-button"
                   type="submit"
                   disabled={!canCreateCategory || categoryMutation.isPending}
-                  aria-label="Crear categoria"
-                  title="Crear categoria"
+                  aria-label="Crear categoría"
+                  title="Crear categoría"
                 >
                   <CirclePlus size={20} />
                 </button>
               </form>
 
-              <div className="chip-list" aria-label="Categorias registradas">
+              <div className="chip-list" aria-label="Categorías registradas">
                 {categories.map((category) => (
                   <span className="soft-pill" key={category.id}>
                     {category.name}

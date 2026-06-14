@@ -108,6 +108,7 @@ export type Database = {
       consumers: {
         Row: {
           id: number
+          user_id: string | null
           consumer_type_id: number
           first_names: string
           last_names: string
@@ -119,6 +120,7 @@ export type Database = {
           created_at: string
         }
         Insert: {
+          user_id?: string | null
           consumer_type_id: number
           first_names: string
           last_names: string
@@ -130,6 +132,7 @@ export type Database = {
           created_at?: string
         }
         Update: {
+          user_id?: string | null
           consumer_type_id?: number
           first_names?: string
           last_names?: string
@@ -145,6 +148,13 @@ export type Database = {
             columns: ['consumer_type_id']
             isOneToOne: false
             referencedRelation: 'consumer_types'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'consumers_user_id_fkey'
+            columns: ['user_id']
+            isOneToOne: true
+            referencedRelation: 'users'
             referencedColumns: ['id']
           },
         ]

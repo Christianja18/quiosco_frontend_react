@@ -57,6 +57,7 @@ export const createAuthUser = async ({
         autoRefreshToken: false,
         detectSessionInUrl: false,
         persistSession: false,
+        storageKey: 'tortas-gaby-admin-user-create-auth',
       },
     },
   )

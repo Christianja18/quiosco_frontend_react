@@ -1,11 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
+  CalendarDays,
   CheckCircle2,
   ClipboardList,
   Minus,
   Plus,
   Search,
-  UserPlus,
   XCircle,
 } from 'lucide-react'
 import { useMemo, useState } from 'react'
@@ -14,7 +14,6 @@ import type {
   CartItem,
   Category,
   Consumer,
-  ConsumerType,
   OrderStatusCode,
   OrderWithDetails,
   PaymentMethod,
@@ -30,10 +29,8 @@ import { getCategories, getProducts } from '../products/api'
 import {
   cancelOrder,
   completeOrder,
-  createConsumer,
   createOrder,
   getConsumers,
-  getConsumerTypes,
   getMyOrders,
   getOrderDetails,
   getOrders,
@@ -43,8 +40,8 @@ import {
 const emptyProducts: ReadonlyArray<Product> = []
 const emptyCategories: ReadonlyArray<Category> = []
 const emptyConsumers: ReadonlyArray<Consumer> = []
-const emptyConsumerTypes: ReadonlyArray<ConsumerType> = []
 const emptyOrders: ReadonlyArray<OrderWithDetails> = []
+const pageSize = 5
 
 const paymentMethods: ReadonlyArray<PaymentMethod> = ['cash', 'yape', 'plin']
 
@@ -52,26 +49,6 @@ const statusLabels: Record<OrderStatusCode, string> = {
   PENDING: 'Pendiente',
   COMPLETED: 'Completado',
   CANCELLED: 'Cancelado',
-}
-
-type ConsumerFormState = {
-  readonly consumerTypeId: string
-  readonly firstNames: string
-  readonly lastNames: string
-  readonly documentNumber: string
-  readonly gradeSection: string
-  readonly phone: string
-  readonly email: string
-}
-
-const initialConsumerForm: ConsumerFormState = {
-  consumerTypeId: '',
-  firstNames: '',
-  lastNames: '',
-  documentNumber: '',
-  gradeSection: '',
-  phone: '',
-  email: '',
 }
 
 type OrdersPageProps = {
@@ -110,21 +87,16 @@ export const OrdersPage = ({ profile, userEmail }: OrdersPageProps) => {
   const canOperate = profile.role === 'admin' || profile.role === 'seller'
 
   const [orderSearch, setOrderSearch] = useState('')
+  const [orderDateSearch, setOrderDateSearch] = useState('')
+  const [orderPage, setOrderPage] = useState(1)
   const [consumerSearch, setConsumerSearch] = useState('')
   const [productSearch, setProductSearch] = useState('')
   const [selectedConsumerId, setSelectedConsumerId] = useState<number | null>(null)
-  const [consumerForm, setConsumerForm] =
-    useState<ConsumerFormState>(initialConsumerForm)
   const [cart, setCart] = useState<ReadonlyArray<CartItem>>([])
   const [notes, setNotes] = useState('')
   const [selectedOrderId, setSelectedOrderId] = useState<number | null>(null)
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash')
   const [isOrderModalOpen, setIsOrderModalOpen] = useState(false)
-
-  const consumerTypesQuery = useQuery({
-    queryKey: ['consumer-types'],
-    queryFn: getConsumerTypes,
-  })
 
   const consumersQuery = useQuery({
     queryKey: ['consumers'],
@@ -153,12 +125,10 @@ export const OrdersPage = ({ profile, userEmail }: OrdersPageProps) => {
     enabled: selectedOrderId !== null,
   })
 
-  const consumerTypes = consumerTypesQuery.data ?? emptyConsumerTypes
   const consumers = consumersQuery.data ?? emptyConsumers
   const products = productsQuery.data ?? emptyProducts
   const categories = categoriesQuery.data ?? emptyCategories
   const orders = ordersQuery.data ?? emptyOrders
-
   const normalizedUserEmail = userEmail?.toLowerCase() ?? null
 
   const categoryById = useMemo(
@@ -173,17 +143,28 @@ export const OrdersPage = ({ profile, userEmail }: OrdersPageProps) => {
 
   const visibleOrders = useMemo(() => {
     const normalized = orderSearch.trim().toLowerCase()
+    const selectedDate = orderDateSearch.trim()
 
-    if (!normalized) {
-      return orders
-    }
+    return orders.filter((order) => {
+      const matchesText =
+        !normalized ||
+        `${order.first_names} ${order.last_names} ${order.status_name} ${order.notes ?? ''}`
+          .toLowerCase()
+          .includes(normalized)
 
-    return orders.filter((order) =>
-      `${order.first_names} ${order.last_names} ${order.status_name} ${order.notes ?? ''}`
-        .toLowerCase()
-        .includes(normalized),
-    )
-  }, [orderSearch, orders])
+      const matchesDate =
+        !selectedDate || order.created_at.slice(0, 10) === selectedDate
+
+      return matchesText && matchesDate
+    })
+  }, [orderDateSearch, orderSearch, orders])
+
+  const orderPageCount = Math.max(1, Math.ceil(visibleOrders.length / pageSize))
+  const safeOrderPage = Math.min(orderPage, orderPageCount)
+  const paginatedOrders = visibleOrders.slice(
+    (safeOrderPage - 1) * pageSize,
+    safeOrderPage * pageSize,
+  )
 
   const filteredConsumers = useMemo(() => {
     const normalized = consumerSearch.trim().toLowerCase()
@@ -236,25 +217,6 @@ export const OrdersPage = ({ profile, userEmail }: OrdersPageProps) => {
     }
   }
 
-  const consumerMutation = useMutation({
-    mutationFn: () =>
-      createConsumer({
-        consumer_type_id: Number(consumerForm.consumerTypeId),
-        first_names: consumerForm.firstNames.trim(),
-        last_names: consumerForm.lastNames.trim(),
-        document_number: toNullableText(consumerForm.documentNumber),
-        grade_section: toNullableText(consumerForm.gradeSection),
-        phone: toNullableText(consumerForm.phone),
-        email: toNullableText(consumerForm.email),
-        is_active: true,
-      }),
-    onSuccess: (consumer) => {
-      setConsumerForm(initialConsumerForm)
-      setSelectedConsumerId(consumer.id)
-      void queryClient.invalidateQueries({ queryKey: ['consumers'] })
-    },
-  })
-
   const orderMutation = useMutation({
     mutationFn: () =>
       isSelfService
@@ -299,14 +261,10 @@ export const OrdersPage = ({ profile, userEmail }: OrdersPageProps) => {
     },
   })
 
-  const canCreateConsumer =
-    canOperate &&
-    Number(consumerForm.consumerTypeId) > 0 &&
-    consumerForm.firstNames.trim().length >= 2 &&
-    consumerForm.lastNames.trim().length >= 2
-
   const canCreateOrder =
     (isSelfService || selectedConsumerId !== null) && cart.length > 0
+
+  const selectOrder = (orderId: number) => setSelectedOrderId(orderId)
 
   return (
     <section className="page-grid" aria-labelledby="orders-title">
@@ -342,8 +300,23 @@ export const OrdersPage = ({ profile, userEmail }: OrdersPageProps) => {
             <Search size={18} aria-hidden="true" />
             <input
               value={orderSearch}
-              onChange={(event) => setOrderSearch(event.target.value)}
+              onChange={(event) => {
+                setOrderSearch(event.target.value)
+                setOrderPage(1)
+              }}
               placeholder="Buscar pedido"
+            />
+          </label>
+          <label className="search-box date-search">
+            <CalendarDays size={18} aria-hidden="true" />
+            <input
+              type="date"
+              value={orderDateSearch}
+              onChange={(event) => {
+                setOrderDateSearch(event.target.value)
+                setOrderPage(1)
+              }}
+              aria-label="Buscar pedidos por fecha"
             />
           </label>
         </div>
@@ -366,17 +339,21 @@ export const OrdersPage = ({ profile, userEmail }: OrdersPageProps) => {
                 </tr>
               </thead>
               <tbody>
-                {visibleOrders.map((order) => (
-                  <tr key={order.id}>
-                    <td>
-                      <button
-                        className="text-button"
-                        type="button"
-                        onClick={() => setSelectedOrderId(order.id)}
-                      >
-                        #{order.id}
-                      </button>
-                    </td>
+                {paginatedOrders.map((order) => (
+                  <tr
+                    className="clickable-row"
+                    key={order.id}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => selectOrder(order.id)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault()
+                        selectOrder(order.id)
+                      }
+                    }}
+                  >
+                    <td className="order-id-cell">#{order.id}</td>
                     <td>
                       {order.first_names} {order.last_names}
                     </td>
@@ -392,17 +369,48 @@ export const OrdersPage = ({ profile, userEmail }: OrdersPageProps) => {
                 ))}
               </tbody>
             </table>
+            <div className="pagination-bar">
+              <span>
+                Página {safeOrderPage} de {orderPageCount}
+              </span>
+              <button
+                className="ghost-button"
+                type="button"
+                disabled={safeOrderPage === 1}
+                onClick={() => setOrderPage((current) => Math.max(1, current - 1))}
+              >
+                Anterior
+              </button>
+              <button
+                className="ghost-button"
+                type="button"
+                disabled={safeOrderPage === orderPageCount}
+                onClick={() =>
+                  setOrderPage((current) => Math.min(orderPageCount, current + 1))
+                }
+              >
+                Siguiente
+              </button>
+            </div>
           </div>
         )}
       </section>
 
       {selectedOrder ? (
-        <section className="panel" aria-labelledby="order-detail-title">
-          <div className="panel-header">
-            <div>
-              <p className="eyebrow">Detalle</p>
-              <h2 id="order-detail-title">Pedido #{selectedOrder.id}</h2>
-            </div>
+        <Modal
+          eyebrow="Detalle"
+          title={`Pedido #${selectedOrder.id}`}
+          onClose={() => setSelectedOrderId(null)}
+        >
+          <div className="order-detail-summary">
+            <span className={`status ${selectedOrder.status_code.toLowerCase()}`}>
+              {statusLabels[selectedOrder.status_code]}
+            </span>
+            <strong>{formatCurrency(selectedOrder.total)}</strong>
+            <span>
+              {selectedOrder.first_names} {selectedOrder.last_names} -{' '}
+              {formatDateTime(selectedOrder.created_at)}
+            </span>
           </div>
 
           {orderDetailsQuery.isLoading ? (
@@ -431,7 +439,7 @@ export const OrdersPage = ({ profile, userEmail }: OrdersPageProps) => {
 
           {canOperate ? (
             <div className="order-actions" aria-label="Acciones del pedido">
-              <div className="payment-group" aria-label="Metodo de pago">
+                <div className="payment-group" aria-label="Método de pago">
                 {paymentMethods.map((method) => (
                   <button
                     className={method === paymentMethod ? 'segment active' : 'segment'}
@@ -476,7 +484,7 @@ export const OrdersPage = ({ profile, userEmail }: OrdersPageProps) => {
               ) : null}
             </div>
           ) : null}
-        </section>
+        </Modal>
       ) : null}
 
       {isOrderModalOpen ? (
@@ -506,7 +514,9 @@ export const OrdersPage = ({ profile, userEmail }: OrdersPageProps) => {
 
                 <div className="consumer-list">
                   {filteredConsumers.length === 0 ? (
-                    <p className="empty-state">No hay consumidores con ese nombre.</p>
+                    <p className="empty-state">
+                      No hay consumidores con ese nombre. Regístralos desde Usuarios.
+                    </p>
                   ) : (
                     filteredConsumers.map((consumer) => (
                       <button
@@ -522,102 +532,11 @@ export const OrdersPage = ({ profile, userEmail }: OrdersPageProps) => {
                         <strong>
                           {consumer.last_names}, {consumer.first_names}
                         </strong>
-                        <span>{consumer.grade_section ?? 'Sin grado/seccion'}</span>
+                      <span>{consumer.grade_section ?? 'Sin grado/sección'}</span>
                       </button>
                     ))
                   )}
                 </div>
-
-                <form
-                  className="form-grid"
-                  onSubmit={(event) => {
-                    event.preventDefault()
-                    if (canCreateConsumer) {
-                      consumerMutation.mutate()
-                    }
-                  }}
-                >
-                  <label className="field wide">
-                    <span>Tipo</span>
-                    <select
-                      value={consumerForm.consumerTypeId}
-                      onChange={(event) =>
-                        setConsumerForm((current) => ({
-                          ...current,
-                          consumerTypeId: event.target.value,
-                        }))
-                      }
-                    >
-                      <option value="">Seleccionar</option>
-                      {consumerTypes.map((type) => (
-                        <option key={type.id} value={type.id}>
-                          {type.name}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-
-                  <label className="field">
-                    <span>Nombres</span>
-                    <input
-                      value={consumerForm.firstNames}
-                      onChange={(event) =>
-                        setConsumerForm((current) => ({
-                          ...current,
-                          firstNames: event.target.value,
-                        }))
-                      }
-                    />
-                  </label>
-
-                  <label className="field">
-                    <span>Apellidos</span>
-                    <input
-                      value={consumerForm.lastNames}
-                      onChange={(event) =>
-                        setConsumerForm((current) => ({
-                          ...current,
-                          lastNames: event.target.value,
-                        }))
-                      }
-                    />
-                  </label>
-
-                  <label className="field">
-                    <span>Grado/seccion</span>
-                    <input
-                      value={consumerForm.gradeSection}
-                      onChange={(event) =>
-                        setConsumerForm((current) => ({
-                          ...current,
-                          gradeSection: event.target.value,
-                        }))
-                      }
-                    />
-                  </label>
-
-                  <label className="field">
-                    <span>Documento</span>
-                    <input
-                      value={consumerForm.documentNumber}
-                      onChange={(event) =>
-                        setConsumerForm((current) => ({
-                          ...current,
-                          documentNumber: event.target.value,
-                        }))
-                      }
-                    />
-                  </label>
-
-                  <button
-                    className="ghost-button wide"
-                    type="submit"
-                    disabled={!canCreateConsumer || consumerMutation.isPending}
-                  >
-                    <UserPlus size={18} />
-                    {consumerMutation.isPending ? 'Guardando...' : 'Crear consumidor'}
-                  </button>
-                </form>
               </section>
             ) : (
               <p className="selected-consumer">
@@ -641,7 +560,9 @@ export const OrdersPage = ({ profile, userEmail }: OrdersPageProps) => {
               ) : null}
 
               {!isSelfService && !selectedConsumer ? (
-                <p className="permission-banner">Selecciona o crea un consumidor.</p>
+                <p className="permission-banner">
+                  Selecciona un consumidor registrado en Usuarios.
+                </p>
               ) : null}
 
               <label className="search-box">
@@ -666,7 +587,7 @@ export const OrdersPage = ({ profile, userEmail }: OrdersPageProps) => {
                     <span>{product.name}</span>
                     <strong>{formatCurrency(product.price)}</strong>
                     <small>
-                      {categoryById.get(product.category_id ?? 0) ?? 'Sin categoria'} -{' '}
+                      {categoryById.get(product.category_id ?? 0) ?? 'Sin categoría'} -{' '}
                       {product.stock} disp.
                     </small>
                   </button>

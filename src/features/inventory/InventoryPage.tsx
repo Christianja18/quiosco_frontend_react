@@ -49,7 +49,7 @@ export const InventoryPage = () => {
   const canSave =
     Number(stockForm.productId) > 0 &&
     Number(stockForm.stock) >= 0 &&
-    Number(stockForm.minStock) >= 0
+    Number(stockForm.minStock) >= 1
 
   return (
     <section className="page-grid" aria-labelledby="inventory-title">
@@ -107,7 +107,7 @@ export const InventoryPage = () => {
             <label className="field">
               <span>Stock actual</span>
               <input
-                min="0"
+                min="1"
                 step="1"
                 type="number"
                 value={stockForm.stock}

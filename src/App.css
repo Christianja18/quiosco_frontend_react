@@ -329,6 +329,7 @@
 .modal-actions .primary-button,
 .modal-actions .ghost-button,
 .page-actions .primary-button,
+.page-actions .ghost-button,
 .list-toolbar .primary-button {
   width: auto;
   padding-inline: 14px;
@@ -582,6 +583,61 @@
 
 .table-wrap {
   overflow-x: auto;
+}
+
+.pagination-bar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  padding-top: 14px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.pagination-bar .ghost-button {
+  width: auto;
+  min-height: 34px;
+  padding-inline: 10px;
+}
+
+.date-search {
+  width: 190px;
+}
+
+.clickable-row {
+  cursor: pointer;
+}
+
+.clickable-row:hover td,
+.clickable-row:focus td {
+  background: var(--brand-soft);
+}
+
+.order-id-cell {
+  color: var(--brand-strong);
+  font-weight: 800;
+}
+
+.order-detail-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 16px;
+  margin-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.order-detail-summary strong {
+  color: var(--text);
+  font-size: 24px;
+}
+
+.order-detail-summary > span:last-child {
+  color: var(--muted);
+  font-size: 13px;
+  text-align: right;
 }
 
 .table-select-label {
