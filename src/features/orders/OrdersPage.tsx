@@ -129,6 +129,7 @@ export const OrdersPage = ({ profile, userEmail }: OrdersPageProps) => {
   const consumersQuery = useQuery({
     queryKey: ['consumers'],
     queryFn: getConsumers,
+    enabled: canOperate,
   })
 
   const productsQuery = useQuery({
@@ -159,16 +160,6 @@ export const OrdersPage = ({ profile, userEmail }: OrdersPageProps) => {
   const orders = ordersQuery.data ?? emptyOrders
 
   const normalizedUserEmail = userEmail?.toLowerCase() ?? null
-
-  const selfConsumer = useMemo(() => {
-    if (!normalizedUserEmail) {
-      return undefined
-    }
-
-    return consumers.find(
-      (consumer) => consumer.email?.toLowerCase() === normalizedUserEmail,
-    )
-  }, [consumers, normalizedUserEmail])
 
   const categoryById = useMemo(
     () => new Map(categories.map((category) => [category.id, category.name])),
@@ -226,7 +217,7 @@ export const OrdersPage = ({ profile, userEmail }: OrdersPageProps) => {
   }, [categoryById, productSearch, products])
 
   const selectedConsumer = isSelfService
-    ? selfConsumer
+    ? undefined
     : consumers.find((consumer) => consumer.id === selectedConsumerId)
 
   const selectedOrder = visibleOrders.find((order) => order.id === selectedOrderId)
