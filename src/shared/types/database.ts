@@ -563,6 +563,20 @@ export type Database = {
         }
         Returns: void
       }
+      update_profile_user: {
+        Args: {
+          p_user_id: string
+          p_full_name: string
+          p_role: UserRole
+        }
+        Returns: void
+      }
+      delete_profile_user: {
+        Args: {
+          p_user_id: string
+        }
+        Returns: void
+      }
       register_sale: {
         Args: {
           p_items: Json

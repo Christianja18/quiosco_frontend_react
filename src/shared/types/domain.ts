@@ -21,6 +21,7 @@ export type SaleDetail = Database['public']['Tables']['sale_details']['Row']
 export type ConsumerType = Database['public']['Tables']['consumer_types']['Row']
 export type Consumer = Database['public']['Tables']['consumers']['Row']
 export type ConsumerInsert = Database['public']['Tables']['consumers']['Insert']
+export type ConsumerUpdate = Database['public']['Tables']['consumers']['Update']
 export type Order = Database['public']['Tables']['orders']['Row']
 export type OrderDetail = Database['public']['Tables']['order_details']['Row']
 export type AccountReceivable =

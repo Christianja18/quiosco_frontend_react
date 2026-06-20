@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Archive, CirclePlus, Package, Save, Search } from 'lucide-react'
+import { Archive, CirclePlus, Package, Pencil, Power, Save, Search } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { Modal } from '../../shared/components/Modal'
 import type { Category, Product, Profile } from '../../shared/types/domain'
@@ -43,6 +43,7 @@ export const ProductsPage = ({ profile }: ProductsPageProps) => {
   const [productSearch, setProductSearch] = useState('')
   const [productPage, setProductPage] = useState(1)
   const [isProductModalOpen, setIsProductModalOpen] = useState(false)
+  const [editingProductId, setEditingProductId] = useState<number | null>(null)
   const [productForm, setProductForm] = useState<ProductFormState>(initialProductForm)
 
   const categoriesQuery = useQuery({
@@ -91,17 +92,41 @@ export const ProductsPage = ({ profile }: ProductsPageProps) => {
     },
   })
 
-  const productMutation = useMutation({
-    mutationFn: createProduct,
+  const saveProductMutation = useMutation({
+    mutationFn: () => {
+      if (editingProductId === null) {
+        return createProduct({
+          name: productForm.name.trim(),
+          category_id: productForm.categoryId
+            ? Number(productForm.categoryId)
+            : null,
+          price: Number(productForm.price),
+          stock: Number(productForm.stock),
+          min_stock: Number(productForm.minStock),
+          is_active: true,
+        })
+      }
+
+      return updateProduct(editingProductId, {
+        name: productForm.name.trim(),
+        category_id: productForm.categoryId
+          ? Number(productForm.categoryId)
+          : null,
+        price: Number(productForm.price),
+        stock: Number(productForm.stock),
+        min_stock: Number(productForm.minStock),
+      })
+    },
     onSuccess: () => {
       setProductForm(initialProductForm)
+      setEditingProductId(null)
       setIsProductModalOpen(false)
       void queryClient.invalidateQueries({ queryKey: ['products'] })
       void queryClient.invalidateQueries({ queryKey: ['low-stock-products'] })
     },
   })
 
-  const productUpdateMutation = useMutation({
+  const productStatusMutation = useMutation({
     mutationFn: ({
       productId,
       isActive,
@@ -111,8 +136,36 @@ export const ProductsPage = ({ profile }: ProductsPageProps) => {
     }) => updateProduct(productId, { is_active: isActive }),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['products'] })
+      void queryClient.invalidateQueries({ queryKey: ['low-stock-products'] })
     },
   })
+
+  const openNewProductModal = () => {
+    setEditingProductId(null)
+    setProductForm(initialProductForm)
+    saveProductMutation.reset()
+    setIsProductModalOpen(true)
+  }
+
+  const openEditProductModal = (product: Product) => {
+    setEditingProductId(product.id)
+    setProductForm({
+      name: product.name,
+      categoryId: product.category_id ? String(product.category_id) : '',
+      price: String(product.price),
+      stock: String(product.stock),
+      minStock: String(product.min_stock),
+    })
+    saveProductMutation.reset()
+    setIsProductModalOpen(true)
+  }
+
+  const closeProductModal = () => {
+    setIsProductModalOpen(false)
+    setEditingProductId(null)
+    setProductForm(initialProductForm)
+    saveProductMutation.reset()
+  }
 
   const canCreateCategory = isAdmin && categoryName.trim().length >= 2
   const canCreateProduct =
@@ -134,7 +187,7 @@ export const ProductsPage = ({ profile }: ProductsPageProps) => {
             <button
               className="primary-button"
               type="button"
-              onClick={() => setIsProductModalOpen(true)}
+              onClick={openNewProductModal}
             >
               <Package size={18} />
               Registrar producto
@@ -212,19 +265,35 @@ export const ProductsPage = ({ profile }: ProductsPageProps) => {
                       </span>
                     </td>
                     <td>
-                      <button
-                        className="text-button"
-                        type="button"
-                        disabled={!isAdmin || productUpdateMutation.isPending}
-                        onClick={() =>
-                          productUpdateMutation.mutate({
-                            productId: product.id,
-                            isActive: !product.is_active,
-                          })
-                        }
-                      >
-                        {product.is_active ? 'Desactivar' : 'Activar'}
-                      </button>
+                      <div className="table-actions">
+                        <button
+                          aria-label="Editar producto"
+                          className="icon-button small"
+                          title="Editar producto"
+                          type="button"
+                          disabled={!isAdmin || saveProductMutation.isPending}
+                          onClick={() => openEditProductModal(product)}
+                        >
+                          <Pencil size={16} />
+                        </button>
+                        <button
+                          aria-label={
+                            product.is_active ? 'Desactivar producto' : 'Activar producto'
+                          }
+                          className="icon-button small danger"
+                          title={product.is_active ? 'Desactivar producto' : 'Activar producto'}
+                          type="button"
+                          disabled={!isAdmin || productStatusMutation.isPending}
+                          onClick={() =>
+                            productStatusMutation.mutate({
+                              productId: product.id,
+                              isActive: !product.is_active,
+                            })
+                          }
+                        >
+                          <Power size={16} />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -261,9 +330,9 @@ export const ProductsPage = ({ profile }: ProductsPageProps) => {
 
       {isProductModalOpen ? (
         <Modal
-          eyebrow="Registro"
-          title="Nuevo producto"
-          onClose={() => setIsProductModalOpen(false)}
+          eyebrow={editingProductId === null ? 'Registro' : 'Edición'}
+          title={editingProductId === null ? 'Nuevo producto' : 'Editar producto'}
+          onClose={closeProductModal}
         >
           <div className="content-grid two-columns">
             <section className="panel flat-panel" aria-labelledby="new-product-title">
@@ -283,16 +352,7 @@ export const ProductsPage = ({ profile }: ProductsPageProps) => {
                     return
                   }
 
-                  productMutation.mutate({
-                    name: productForm.name.trim(),
-                    category_id: productForm.categoryId
-                      ? Number(productForm.categoryId)
-                      : null,
-                    price: Number(productForm.price),
-                    stock: Number(productForm.stock),
-                    min_stock: Number(productForm.minStock),
-                    is_active: true,
-                  })
+                  saveProductMutation.mutate()
                 }}
               >
                 <label className="field wide">
@@ -380,10 +440,14 @@ export const ProductsPage = ({ profile }: ProductsPageProps) => {
                 <button
                   className="primary-button wide"
                   type="submit"
-                  disabled={!canCreateProduct || productMutation.isPending}
+                  disabled={!canCreateProduct || saveProductMutation.isPending}
                 >
                   <Save size={18} />
-                  {productMutation.isPending ? 'Guardando...' : 'Guardar producto'}
+                  {saveProductMutation.isPending
+                    ? 'Guardando...'
+                    : editingProductId === null
+                      ? 'Guardar producto'
+                      : 'Guardar cambios'}
                 </button>
               </form>
             </section>

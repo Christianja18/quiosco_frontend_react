@@ -20,6 +20,7 @@ import { formatCurrency, formatDateTime, paymentMethodLabels } from '../../share
 const pageSize = 5
 
 export const DashboardPage = () => {
+  const [lowStockPage, setLowStockPage] = useState(1)
   const [recentSalesPage, setRecentSalesPage] = useState(1)
   const [recentSalesDateSearch, setRecentSalesDateSearch] = useState('')
   const [selectedSaleId, setSelectedSaleId] = useState<number | null>(null)
@@ -48,6 +49,12 @@ export const DashboardPage = () => {
   const today = todayQuery.data
   const lowStock = lowStockQuery.data ?? []
   const recentSales = recentSalesQuery.data ?? []
+  const lowStockPageCount = Math.max(1, Math.ceil(lowStock.length / pageSize))
+  const safeLowStockPage = Math.min(lowStockPage, lowStockPageCount)
+  const paginatedLowStock = lowStock.slice(
+    (safeLowStockPage - 1) * pageSize,
+    safeLowStockPage * pageSize,
+  )
   const filteredRecentSales = recentSales.filter(
     (sale) =>
       !recentSalesDateSearch || sale.created_at.slice(0, 10) === recentSalesDateSearch,
@@ -125,7 +132,7 @@ export const DashboardPage = () => {
             <p className="empty-state">No hay productos por debajo del stock mínimo.</p>
           ) : (
             <div className="list-stack">
-              {lowStock.map((product) => (
+              {paginatedLowStock.map((product) => (
                 <article className="list-row" key={product.id}>
                   <div>
                     <strong>{product.name}</strong>
@@ -136,6 +143,35 @@ export const DashboardPage = () => {
                   </span>
                 </article>
               ))}
+              {lowStock.length > pageSize ? (
+                <div className="pagination-bar">
+                  <span>
+                    Página {safeLowStockPage} de {lowStockPageCount}
+                  </span>
+                  <button
+                    className="ghost-button"
+                    type="button"
+                    disabled={safeLowStockPage === 1}
+                    onClick={() =>
+                      setLowStockPage((current) => Math.max(1, current - 1))
+                    }
+                  >
+                    Anterior
+                  </button>
+                  <button
+                    className="ghost-button"
+                    type="button"
+                    disabled={safeLowStockPage === lowStockPageCount}
+                    onClick={() =>
+                      setLowStockPage((current) =>
+                        Math.min(lowStockPageCount, current + 1),
+                      )
+                    }
+                  >
+                    Siguiente
+                  </button>
+                </div>
+              ) : null}
             </div>
           )}
         </section>

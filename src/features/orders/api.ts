@@ -4,6 +4,7 @@ import type {
   Consumer,
   ConsumerInsert,
   ConsumerType,
+  ConsumerUpdate,
   OrderDetail,
   OrderPaymentType,
   OrderWithDetails,
@@ -56,6 +57,41 @@ export const createConsumer = async (
   }
 
   return data
+}
+
+export const updateConsumer = async (
+  consumerId: number,
+  consumer: ConsumerUpdate,
+): Promise<Consumer> => {
+  const { data, error } = await supabase
+    .from('consumers')
+    .update(consumer)
+    .eq('id', consumerId)
+    .select('*')
+    .single()
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  return data
+}
+
+export const deactivateConsumer = async (consumerId: number): Promise<void> => {
+  const { error } = await supabase
+    .from('consumers')
+    .update({
+      is_active: false,
+      user_id: null,
+      document_number: null,
+      phone: null,
+      email: null,
+    })
+    .eq('id', consumerId)
+
+  if (error) {
+    throw new Error(error.message)
+  }
 }
 
 export const getOrders = async (): Promise<ReadonlyArray<OrderWithDetails>> => {

@@ -181,7 +181,7 @@ export const InventoryPage = () => {
             <label className="field wide">
               <span>Producto seleccionado</span>
               <input
-                readOnly
+                disabled
                 value={selectedProduct?.name ?? ''}
                 placeholder="Selecciona un producto desde la búsqueda"
               />
