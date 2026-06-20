@@ -24,7 +24,7 @@ export const getLowStockProducts = async (): Promise<
   const { data, error } = await supabase
     .from('low_stock_products')
     .select('*')
-    .order('stock', { ascending: true })
+    .order('available_stock', { ascending: true })
     .limit(8)
 
   if (error) {

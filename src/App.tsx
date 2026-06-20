@@ -30,6 +30,7 @@ import { ReportsPage } from './features/reports/ReportsPage'
 import { SalesPage } from './features/sales/SalesPage'
 import { SettingsPage } from './features/settings/SettingsPage'
 import { UsersPage } from './features/users/UsersPage'
+import { useProductsRealtime } from './shared/hooks/useProductsRealtime'
 
 type AppView =
   | 'dashboard'
@@ -73,6 +74,7 @@ function App() {
   const auth = useAuth()
   const [currentView, setCurrentView] = useState<AppView>('sales')
   const queryClient = useQueryClient()
+  useProductsRealtime({ enabled: auth.status === 'authenticated' })
 
   const userId = auth.status === 'authenticated' ? auth.session.user.id : ''
 

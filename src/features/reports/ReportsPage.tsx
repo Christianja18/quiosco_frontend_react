@@ -127,13 +127,13 @@ export const ReportsPage = () => {
                 </div>
                 <span
                   className={
-                    product.stock <= product.min_stock
+                    product.available_stock <= product.min_stock
                       ? 'stock-pill danger'
                       : 'stock-pill'
-                  }
-                >
-                  {product.stock}
-                </span>
+                   }
+                 >
+                   {product.available_stock}
+                 </span>
               </article>
             ))}
             <div className="pagination-bar">

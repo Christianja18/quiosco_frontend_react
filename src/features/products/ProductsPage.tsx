@@ -184,7 +184,7 @@ export const ProductsPage = ({ profile }: ProductsPageProps) => {
                   <th>Producto</th>
                   <th>Categoría</th>
                   <th>Precio</th>
-                  <th>Stock</th>
+                  <th>Disponible</th>
                   <th>Estado</th>
                   <th>Acción</th>
                 </tr>
@@ -198,12 +198,12 @@ export const ProductsPage = ({ profile }: ProductsPageProps) => {
                     <td>
                       <span
                         className={
-                          product.stock <= product.min_stock
+                          product.available_stock <= product.min_stock
                             ? 'stock-pill danger'
                             : 'stock-pill'
                         }
                       >
-                        {product.stock}
+                        {product.available_stock}
                       </span>
                     </td>
                     <td>

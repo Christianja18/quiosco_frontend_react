@@ -34,7 +34,7 @@ const addProductToCart = (
     item.product.id === product.id
       ? {
           ...item,
-          quantity: Math.min(item.quantity + 1, product.stock),
+          quantity: Math.min(item.quantity + 1, product.available_stock),
         }
       : item,
   )
@@ -68,7 +68,7 @@ export const SalesPage = () => {
     const normalizedSearch = search.trim().toLowerCase()
 
     return products.filter((product) => {
-      if (!product.is_active || product.stock <= 0) {
+      if (!product.is_active || product.available_stock <= 0) {
         return false
       }
 
@@ -159,7 +159,7 @@ export const SalesPage = () => {
                 <strong>{formatCurrency(product.price)}</strong>
                 <small>
                   {categoryById.get(product.category_id ?? 0) ?? 'Sin categoría'} ·{' '}
-                  {product.stock} disp.
+                  {product.available_stock} disp.
                 </small>
               </button>
             ))}
@@ -214,7 +214,7 @@ export const SalesPage = () => {
                     className="icon-button small"
                     type="button"
                     aria-label={`Sumar ${item.product.name}`}
-                    disabled={item.quantity >= item.product.stock}
+                    disabled={item.quantity >= item.product.available_stock}
                     onClick={() =>
                       setCart((current) => addProductToCart(current, item.product))
                     }

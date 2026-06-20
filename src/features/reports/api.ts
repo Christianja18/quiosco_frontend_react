@@ -22,7 +22,7 @@ export const getReportSales = async (): Promise<ReadonlyArray<Sale>> => {
 
 export const getReportProducts = async (): Promise<ReadonlyArray<Product>> => {
   const { data, error } = await supabase
-    .from('products')
+    .from('products_available')
     .select('*')
     .order('name', { ascending: true })
 
@@ -39,7 +39,7 @@ export const getReportLowStock = async (): Promise<
   const { data, error } = await supabase
     .from('low_stock_products')
     .select('*')
-    .order('stock', { ascending: true })
+    .order('available_stock', { ascending: true })
 
   if (error) {
     throw new Error(error.message)

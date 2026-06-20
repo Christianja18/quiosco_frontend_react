@@ -78,7 +78,15 @@ const addProductToCart = (
   const existing = cart.find((item) => item.product.id === product.id)
 
   if (!existing) {
+    if (product.available_stock <= 0) {
+      return cart
+    }
+
     return [...cart, { product, quantity: 1 }]
+  }
+
+  if (existing.quantity >= product.available_stock) {
+    return cart
   }
 
   return cart.map((item) =>
@@ -278,6 +286,8 @@ export const OrdersPage = ({ profile, userEmail }: OrdersPageProps) => {
       setIsOrderModalOpen(false)
       void queryClient.invalidateQueries({ queryKey: ['orders'] })
       void queryClient.invalidateQueries({ queryKey: ['consumers'] })
+      void queryClient.invalidateQueries({ queryKey: ['products'] })
+      void queryClient.invalidateQueries({ queryKey: ['low-stock-products'] })
     },
   })
 
@@ -315,6 +325,8 @@ export const OrdersPage = ({ profile, userEmail }: OrdersPageProps) => {
     mutationFn: cancelOrder,
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['orders'] })
+      void queryClient.invalidateQueries({ queryKey: ['products'] })
+      void queryClient.invalidateQueries({ queryKey: ['low-stock-products'] })
     },
   })
 
@@ -779,23 +791,31 @@ export const OrdersPage = ({ profile, userEmail }: OrdersPageProps) => {
               </label>
 
               <div className="product-grid compact">
-                {filteredProducts.map((product) => (
-                  <button
-                    className="product-tile"
-                    type="button"
-                    key={product.id}
-                    onClick={() =>
-                      setCart((current) => addProductToCart(current, product))
-                    }
-                  >
-                    <span>{product.name}</span>
-                    <strong>{formatCurrency(product.price)}</strong>
-                    <small>
-                      {categoryById.get(product.category_id ?? 0) ?? 'Sin categoría'} -{' '}
-                      {product.stock} disp.
-                    </small>
-                  </button>
-                ))}
+                {filteredProducts.map((product) => {
+                  const cartItem = cart.find((item) => item.product.id === product.id)
+                  const isSelected = cartItem !== undefined
+                  const isOutOfStock = product.available_stock <= 0
+
+                  return (
+                    <button
+                      className={isSelected ? 'product-tile active' : 'product-tile'}
+                      type="button"
+                      key={product.id}
+                      disabled={isOutOfStock}
+                      onClick={() =>
+                        setCart((current) => addProductToCart(current, product))
+                      }
+                    >
+                      <span>{product.name}</span>
+                      <strong>{formatCurrency(product.price)}</strong>
+                      <small>
+                        {categoryById.get(product.category_id ?? 0) ?? 'Sin categoría'} -{' '}
+                        {product.available_stock} disp.
+                        {isSelected ? ` · ${cartItem.quantity} en pedido` : ''}
+                      </small>
+                    </button>
+                  )
+                })}
               </div>
             </section>
           </div>
@@ -835,6 +855,7 @@ export const OrdersPage = ({ profile, userEmail }: OrdersPageProps) => {
                       className="icon-button small"
                       type="button"
                       aria-label={`Sumar ${item.product.name}`}
+                      disabled={item.quantity >= item.product.available_stock}
                       onClick={() =>
                         setCart((current) => addProductToCart(current, item.product))
                       }

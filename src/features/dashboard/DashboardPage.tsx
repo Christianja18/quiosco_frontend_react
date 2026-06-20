@@ -105,7 +105,7 @@ export const DashboardPage = () => {
                     <span>{product.category_name ?? 'Sin categoría'}</span>
                   </div>
                   <span className="stock-pill danger">
-                    {product.stock} / {product.min_stock}
+                    {product.available_stock} / {product.min_stock}
                   </span>
                 </article>
               ))}

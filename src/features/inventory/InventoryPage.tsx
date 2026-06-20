@@ -167,14 +167,14 @@ export const InventoryPage = () => {
           ) : (
             <div className="list-stack">
               {products
-                .filter((product) => product.stock <= product.min_stock)
+                .filter((product) => product.available_stock <= product.min_stock)
                 .map((product) => (
                   <article className="list-row" key={product.id}>
                     <div>
                       <strong>{product.name}</strong>
                       <span>Mínimo: {product.min_stock}</span>
                     </div>
-                    <span className="stock-pill danger">{product.stock}</span>
+                    <span className="stock-pill danger">{product.available_stock}</span>
                   </article>
                 ))}
             </div>

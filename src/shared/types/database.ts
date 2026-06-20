@@ -53,6 +53,7 @@ export type Database = {
           name: string
           price: number
           stock: number
+          reserved_stock: number
           min_stock: number
           is_active: boolean
           created_at: string
@@ -62,6 +63,7 @@ export type Database = {
           name: string
           price: number
           stock?: number
+          reserved_stock?: number
           min_stock?: number
           is_active?: boolean
           created_at?: string
@@ -71,6 +73,7 @@ export type Database = {
           name?: string
           price?: number
           stock?: number
+          reserved_stock?: number
           min_stock?: number
           is_active?: boolean
         }
@@ -453,11 +456,28 @@ export type Database = {
         }
         Relationships: []
       }
+      products_available: {
+        Row: {
+          id: number
+          category_id: number | null
+          name: string
+          price: number
+          stock: number
+          reserved_stock: number
+          available_stock: number
+          min_stock: number
+          is_active: boolean
+          created_at: string
+        }
+        Relationships: []
+      }
       low_stock_products: {
         Row: {
           id: number
           name: string
           stock: number
+          reserved_stock: number
+          available_stock: number
           min_stock: number
           price: number
           category_name: string | null

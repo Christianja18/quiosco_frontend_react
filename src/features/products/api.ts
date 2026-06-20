@@ -3,6 +3,7 @@ import type {
   Category,
   Product,
   ProductInsert,
+  ProductRecord,
   ProductUpdate,
 } from '../../shared/types/domain'
 
@@ -35,7 +36,7 @@ export const createCategory = async (name: string): Promise<Category> => {
 
 export const getProducts = async (): Promise<ReadonlyArray<Product>> => {
   const { data, error } = await supabase
-    .from('products')
+    .from('products_available')
     .select('*')
     .order('is_active', { ascending: false })
     .order('name', { ascending: true })
@@ -47,7 +48,9 @@ export const getProducts = async (): Promise<ReadonlyArray<Product>> => {
   return data
 }
 
-export const createProduct = async (product: ProductInsert): Promise<Product> => {
+export const createProduct = async (
+  product: ProductInsert,
+): Promise<ProductRecord> => {
   const { data, error } = await supabase
     .from('products')
     .insert(product)
@@ -64,7 +67,7 @@ export const createProduct = async (product: ProductInsert): Promise<Product> =>
 export const updateProduct = async (
   productId: number,
   product: ProductUpdate,
-): Promise<Product> => {
+): Promise<ProductRecord> => {
   const { data, error } = await supabase
     .from('products')
     .update(product)
