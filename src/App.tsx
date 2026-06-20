@@ -3,6 +3,7 @@ import type { LucideIcon } from 'lucide-react'
 import {
   Banknote,
   ClipboardList,
+  HandCoins,
   FileBarChart,
   PackageCheck,
   LayoutDashboard,
@@ -21,6 +22,7 @@ import { LoginPage } from './features/auth/LoginPage'
 import { useAuth } from './features/auth/useAuth'
 import { CashPage } from './features/cash/CashPage'
 import { DashboardPage } from './features/dashboard/DashboardPage'
+import { DebtsPage } from './features/debts/DebtsPage'
 import { InventoryPage } from './features/inventory/InventoryPage'
 import { OrdersPage } from './features/orders/OrdersPage'
 import { ProductsPage } from './features/products/ProductsPage'
@@ -36,6 +38,7 @@ type AppView =
   | 'products'
   | 'inventory'
   | 'cash'
+  | 'debts'
   | 'reports'
   | 'users'
   | 'settings'
@@ -53,6 +56,7 @@ const navigationItems: ReadonlyArray<NavigationItem> = [
   { id: 'products', label: 'Productos', icon: Package },
   { id: 'inventory', label: 'Inventario', icon: PackageCheck },
   { id: 'cash', label: 'Caja', icon: Banknote },
+  { id: 'debts', label: 'Deudas', icon: HandCoins },
   { id: 'reports', label: 'Reportes', icon: FileBarChart },
   { id: 'users', label: 'Usuarios', icon: Users },
   { id: 'settings', label: 'Config.', icon: Settings },
@@ -123,9 +127,15 @@ function App() {
   const profile = profileQuery.data
   const isSelfServiceUser = profile.role === 'profesor' || profile.role === 'alumno'
   const visibleNavigationItems = isSelfServiceUser
-    ? navigationItems.filter((item) => item.id === 'orders')
+    ? navigationItems.filter(
+        (item) => item.id === 'orders' || item.id === 'debts',
+      )
     : navigationItems
-  const activeView = isSelfServiceUser ? 'orders' : currentView
+  const activeView = isSelfServiceUser
+    ? currentView === 'debts'
+      ? 'debts'
+      : 'orders'
+    : currentView
 
   return (
     <div className="app-shell">
@@ -192,6 +202,7 @@ function App() {
           {activeView === 'products' ? <ProductsPage profile={profile} /> : null}
           {activeView === 'inventory' ? <InventoryPage /> : null}
           {activeView === 'cash' ? <CashPage /> : null}
+          {activeView === 'debts' ? <DebtsPage profile={profile} /> : null}
           {activeView === 'reports' ? <ReportsPage /> : null}
           {activeView === 'users' ? <UsersPage profile={profile} /> : null}
           {activeView === 'settings' ? <SettingsPage /> : null}

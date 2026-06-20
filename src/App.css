@@ -193,6 +193,7 @@
 }
 
 .list-toolbar {
+  flex-wrap: wrap;
   justify-content: space-between;
   margin-bottom: 16px;
 }
@@ -603,6 +604,14 @@
 
 .date-search {
   width: 190px;
+}
+
+.inline-filter {
+  width: min(100%, 220px);
+}
+
+.inline-filter select {
+  min-height: 44px;
 }
 
 .clickable-row {

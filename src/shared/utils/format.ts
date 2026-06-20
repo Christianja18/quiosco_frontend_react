@@ -1,4 +1,4 @@
-import type { PaymentMethod } from '../types/domain'
+import type { OrderPaymentType, PaymentMethod } from '../types/domain'
 
 export const formatCurrency = (value: number): string =>
   new Intl.NumberFormat('es-PE', {
@@ -16,4 +16,10 @@ export const paymentMethodLabels: Record<PaymentMethod, string> = {
   cash: 'Efectivo',
   yape: 'Yape',
   plin: 'Plin',
+  credit: 'Crédito mensual',
+}
+
+export const orderPaymentTypeLabels: Record<OrderPaymentType, string> = {
+  IMMEDIATE: 'Pago inmediato',
+  END_OF_MONTH: 'Fin de mes',
 }

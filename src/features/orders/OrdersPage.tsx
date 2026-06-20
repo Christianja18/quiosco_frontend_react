@@ -14,7 +14,9 @@ import type {
   CartItem,
   Category,
   Consumer,
+  ConsumerType,
   OrderStatusCode,
+  OrderPaymentType,
   OrderWithDetails,
   PaymentMethod,
   Product,
@@ -23,6 +25,7 @@ import type {
 import {
   formatCurrency,
   formatDateTime,
+  orderPaymentTypeLabels,
   paymentMethodLabels,
 } from '../../shared/utils/format'
 import { getCategories, getProducts } from '../products/api'
@@ -31,19 +34,26 @@ import {
   completeOrder,
   createOrder,
   getConsumers,
+  getConsumerTypes,
   getMyOrders,
   getOrderDetails,
   getOrders,
   reserveOrder,
+  updateOrderPaymentType,
 } from './api'
 
 const emptyProducts: ReadonlyArray<Product> = []
 const emptyCategories: ReadonlyArray<Category> = []
 const emptyConsumers: ReadonlyArray<Consumer> = []
+const emptyConsumerTypes: ReadonlyArray<ConsumerType> = []
 const emptyOrders: ReadonlyArray<OrderWithDetails> = []
 const pageSize = 5
 
 const paymentMethods: ReadonlyArray<PaymentMethod> = ['cash', 'yape', 'plin']
+const orderPaymentTypes: ReadonlyArray<OrderPaymentType> = [
+  'IMMEDIATE',
+  'END_OF_MONTH',
+]
 
 const statusLabels: Record<OrderStatusCode, string> = {
   PENDING: 'Pendiente',
@@ -96,6 +106,8 @@ export const OrdersPage = ({ profile, userEmail }: OrdersPageProps) => {
   const [notes, setNotes] = useState('')
   const [selectedOrderId, setSelectedOrderId] = useState<number | null>(null)
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash')
+  const [orderPaymentType, setOrderPaymentType] =
+    useState<OrderPaymentType>('IMMEDIATE')
   const [isOrderModalOpen, setIsOrderModalOpen] = useState(false)
 
   const consumersQuery = useQuery({
@@ -114,6 +126,12 @@ export const OrdersPage = ({ profile, userEmail }: OrdersPageProps) => {
     queryFn: getCategories,
   })
 
+  const consumerTypesQuery = useQuery({
+    queryKey: ['consumer-types'],
+    queryFn: getConsumerTypes,
+    enabled: canOperate,
+  })
+
   const ordersQuery = useQuery({
     queryKey: ['orders', isSelfService ? 'mine' : 'all', profile.id],
     queryFn: () => (isSelfService ? getMyOrders() : getOrders()),
@@ -128,6 +146,7 @@ export const OrdersPage = ({ profile, userEmail }: OrdersPageProps) => {
   const consumers = consumersQuery.data ?? emptyConsumers
   const products = productsQuery.data ?? emptyProducts
   const categories = categoriesQuery.data ?? emptyCategories
+  const consumerTypes = consumerTypesQuery.data ?? emptyConsumerTypes
   const orders = ordersQuery.data ?? emptyOrders
   const normalizedUserEmail = userEmail?.toLowerCase() ?? null
 
@@ -139,6 +158,11 @@ export const OrdersPage = ({ profile, userEmail }: OrdersPageProps) => {
   const productById = useMemo(
     () => new Map(products.map((product) => [product.id, product])),
     [products],
+  )
+
+  const consumerTypeById = useMemo(
+    () => new Map(consumerTypes.map((consumerType) => [consumerType.id, consumerType])),
+    [consumerTypes],
   )
 
   const visibleOrders = useMemo(() => {
@@ -200,6 +224,17 @@ export const OrdersPage = ({ profile, userEmail }: OrdersPageProps) => {
   const selectedConsumer = isSelfService
     ? undefined
     : consumers.find((consumer) => consumer.id === selectedConsumerId)
+  const selectedConsumerType = selectedConsumer
+    ? consumerTypeById.get(selectedConsumer.consumer_type_id)
+    : undefined
+  const selfServiceCanUseEndOfMonth =
+    profile.role === 'profesor' || profile.role === 'alumno'
+  const canUseEndOfMonth =
+    isSelfService
+      ? selfServiceCanUseEndOfMonth
+      : selectedConsumerType?.code === 'STUDENT' || selectedConsumerType?.code === 'TEACHER'
+  const effectiveOrderPaymentType: OrderPaymentType =
+    canUseEndOfMonth ? orderPaymentType : 'IMMEDIATE'
 
   const selectedOrder = visibleOrders.find((order) => order.id === selectedOrderId)
 
@@ -212,6 +247,7 @@ export const OrdersPage = ({ profile, userEmail }: OrdersPageProps) => {
     setCart([])
     setNotes('')
     setProductSearch('')
+    setOrderPaymentType('IMMEDIATE')
     if (!isSelfService) {
       setSelectedConsumerId(null)
     }
@@ -226,6 +262,7 @@ export const OrdersPage = ({ profile, userEmail }: OrdersPageProps) => {
               quantity: item.quantity,
             })),
             toNullableText(notes),
+            effectiveOrderPaymentType,
           )
         : createOrder(
             selectedConsumerId ?? 0,
@@ -234,6 +271,7 @@ export const OrdersPage = ({ profile, userEmail }: OrdersPageProps) => {
               quantity: item.quantity,
             })),
             toNullableText(notes),
+            effectiveOrderPaymentType,
           ),
     onSuccess: () => {
       resetOrderForm()
@@ -244,13 +282,32 @@ export const OrdersPage = ({ profile, userEmail }: OrdersPageProps) => {
   })
 
   const completeMutation = useMutation({
-    mutationFn: (orderId: number) => completeOrder(orderId, paymentMethod),
+    mutationFn: (orderId: number) =>
+      completeOrder(
+        orderId,
+        selectedOrder?.payment_type === 'END_OF_MONTH' ? null : paymentMethod,
+      ),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['orders'] })
       void queryClient.invalidateQueries({ queryKey: ['products'] })
       void queryClient.invalidateQueries({ queryKey: ['dashboard-today'] })
       void queryClient.invalidateQueries({ queryKey: ['recent-sales'] })
       void queryClient.invalidateQueries({ queryKey: ['low-stock-products'] })
+      void queryClient.invalidateQueries({ queryKey: ['account-receivables'] })
+    },
+  })
+
+  const updatePaymentTypeMutation = useMutation({
+    mutationFn: ({
+      orderId,
+      paymentType,
+    }: {
+      readonly orderId: number
+      readonly paymentType: OrderPaymentType
+    }) => updateOrderPaymentType(orderId, paymentType),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['orders'] })
+      void queryClient.invalidateQueries({ queryKey: ['account-receivables'] })
     },
   })
 
@@ -287,6 +344,15 @@ export const OrdersPage = ({ profile, userEmail }: OrdersPageProps) => {
     const timeoutId = window.setTimeout(() => cancelMutation.reset(), 5000)
     return () => window.clearTimeout(timeoutId)
   }, [cancelMutation])
+
+  useEffect(() => {
+    if (!updatePaymentTypeMutation.isError) {
+      return undefined
+    }
+
+    const timeoutId = window.setTimeout(() => updatePaymentTypeMutation.reset(), 5000)
+    return () => window.clearTimeout(timeoutId)
+  }, [updatePaymentTypeMutation])
 
   const canCreateOrder =
     (isSelfService || selectedConsumerId !== null) && cart.length > 0
@@ -360,6 +426,7 @@ export const OrdersPage = ({ profile, userEmail }: OrdersPageProps) => {
                   <th>Pedido</th>
                   <th>Persona</th>
                   <th>Tipo</th>
+                  <th>Pago</th>
                   <th>Fecha</th>
                   <th>Total</th>
                   <th>Estado</th>
@@ -385,6 +452,7 @@ export const OrdersPage = ({ profile, userEmail }: OrdersPageProps) => {
                       {order.first_names} {order.last_names}
                     </td>
                     <td>{order.consumer_type_name}</td>
+                    <td>{orderPaymentTypeLabels[order.payment_type]}</td>
                     <td>{formatDateTime(order.created_at)}</td>
                     <td>{formatCurrency(order.total)}</td>
                     <td>
@@ -436,6 +504,7 @@ export const OrdersPage = ({ profile, userEmail }: OrdersPageProps) => {
             <strong>{formatCurrency(selectedOrder.total)}</strong>
             <span>
               {selectedOrder.first_names} {selectedOrder.last_names} -{' '}
+              {orderPaymentTypeLabels[selectedOrder.payment_type]} -{' '}
               {formatDateTime(selectedOrder.created_at)}
             </span>
           </div>
@@ -466,18 +535,57 @@ export const OrdersPage = ({ profile, userEmail }: OrdersPageProps) => {
 
           {canOperate ? (
             <div className="order-actions" aria-label="Acciones del pedido">
+              {selectedOrder.status_code === 'PENDING' ? (
+                <div className="payment-group" aria-label="Tipo de pago del pedido">
+                  {orderPaymentTypes.map((type) => {
+                    const supportsEndOfMonth =
+                      selectedOrder.consumer_type_code === 'STUDENT' ||
+                      selectedOrder.consumer_type_code === 'TEACHER'
+                    const disabled =
+                      updatePaymentTypeMutation.isPending ||
+                      (type === 'END_OF_MONTH' && !supportsEndOfMonth)
+
+                    return (
+                      <button
+                        className={
+                          type === selectedOrder.payment_type ? 'segment active' : 'segment'
+                        }
+                        key={type}
+                        type="button"
+                        disabled={disabled}
+                        onClick={() => {
+                          if (type === selectedOrder.payment_type) {
+                            return
+                          }
+
+                          updatePaymentTypeMutation.mutate({
+                            orderId: selectedOrder.id,
+                            paymentType: type,
+                          })
+                        }}
+                      >
+                        {orderPaymentTypeLabels[type]}
+                      </button>
+                    )
+                  })}
+                </div>
+              ) : null}
+
+              {selectedOrder.status_code === 'PENDING' &&
+              selectedOrder.payment_type === 'IMMEDIATE' ? (
                 <div className="payment-group" aria-label="Método de pago">
-                {paymentMethods.map((method) => (
-                  <button
-                    className={method === paymentMethod ? 'segment active' : 'segment'}
-                    key={method}
-                    type="button"
-                    onClick={() => setPaymentMethod(method)}
-                  >
-                    {paymentMethodLabels[method]}
-                  </button>
-                ))}
-              </div>
+                  {paymentMethods.map((method) => (
+                    <button
+                      className={method === paymentMethod ? 'segment active' : 'segment'}
+                      key={method}
+                      type="button"
+                      onClick={() => setPaymentMethod(method)}
+                    >
+                      {paymentMethodLabels[method]}
+                    </button>
+                  ))}
+                </div>
+              ) : null}
 
               {selectedOrder.status_code === 'PENDING' ? (
                 <div className="action-grid">
@@ -488,7 +596,9 @@ export const OrdersPage = ({ profile, userEmail }: OrdersPageProps) => {
                     onClick={() => completeMutation.mutate(selectedOrder.id)}
                   >
                     <CheckCircle2 size={18} />
-                    Completar venta
+                    {selectedOrder.payment_type === 'END_OF_MONTH'
+                      ? 'Completar y cargar deuda'
+                      : 'Completar venta'}
                   </button>
                   <button
                     className="ghost-button danger"
@@ -501,12 +611,21 @@ export const OrdersPage = ({ profile, userEmail }: OrdersPageProps) => {
                   </button>
                 </div>
               ) : (
-                <p className="empty-state">Este pedido ya no esta pendiente.</p>
+                <p className="empty-state">Este pedido ya no está pendiente.</p>
               )}
 
               {completeMutation.isError || cancelMutation.isError ? (
                 <p className="error-message" role="alert">
                   No se pudo actualizar el pedido. Revisa stock o estado.
+                </p>
+              ) : null}
+
+              {updatePaymentTypeMutation.isError ? (
+                <p className="error-message" role="alert">
+                  No se pudo cambiar el tipo de pago.
+                  {updatePaymentTypeMutation.error instanceof Error
+                    ? ` ${updatePaymentTypeMutation.error.message}`
+                    : ''}
                 </p>
               ) : null}
             </div>
@@ -554,7 +673,19 @@ export const OrdersPage = ({ profile, userEmail }: OrdersPageProps) => {
                         }
                         type="button"
                         key={consumer.id}
-                        onClick={() => setSelectedConsumerId(consumer.id)}
+                        onClick={() => {
+                          const consumerType = consumerTypeById.get(
+                            consumer.consumer_type_id,
+                          )
+                          const supportsEndOfMonth =
+                            consumerType?.code === 'STUDENT' ||
+                            consumerType?.code === 'TEACHER'
+
+                          setSelectedConsumerId(consumer.id)
+                          if (!supportsEndOfMonth) {
+                            setOrderPaymentType('IMMEDIATE')
+                          }
+                        }}
                       >
                         <strong>
                           {consumer.last_names}, {consumer.first_names}
@@ -566,10 +697,28 @@ export const OrdersPage = ({ profile, userEmail }: OrdersPageProps) => {
                 </div>
               </section>
             ) : (
-              <p className="selected-consumer">
-                Reserva para {profile.full_name}
-                {normalizedUserEmail ? ` (${normalizedUserEmail})` : ''}
-              </p>
+              <>
+                <p className="selected-consumer">
+                  Reserva para {profile.full_name}
+                  {normalizedUserEmail ? ` (${normalizedUserEmail})` : ''}
+                </p>
+                <div className="payment-group" aria-label="Tipo de pago del pedido">
+                  {orderPaymentTypes.map((type) => (
+                    <button
+                      className={
+                        type === effectiveOrderPaymentType
+                          ? 'segment active'
+                          : 'segment'
+                      }
+                      key={type}
+                      type="button"
+                      onClick={() => setOrderPaymentType(type)}
+                    >
+                      {orderPaymentTypeLabels[type]}
+                    </button>
+                  ))}
+                </div>
+              </>
             )}
 
             <section className="panel flat-panel" aria-labelledby="products-order-title">
@@ -581,9 +730,37 @@ export const OrdersPage = ({ profile, userEmail }: OrdersPageProps) => {
               </div>
 
               {!isSelfService && selectedConsumer ? (
-                <p className="selected-consumer">
-                  Para {selectedConsumer.first_names} {selectedConsumer.last_names}
-                </p>
+                <>
+                  <p className="selected-consumer">
+                    Para {selectedConsumer.first_names} {selectedConsumer.last_names}
+                  </p>
+                  <div className="payment-group" aria-label="Tipo de pago del pedido">
+                    {orderPaymentTypes.map((type) => {
+                      const disabled = type === 'END_OF_MONTH' && !canUseEndOfMonth
+
+                      return (
+                        <button
+                          className={
+                            type === effectiveOrderPaymentType
+                              ? 'segment active'
+                              : 'segment'
+                          }
+                          key={type}
+                          type="button"
+                          disabled={disabled}
+                          onClick={() => setOrderPaymentType(type)}
+                        >
+                          {orderPaymentTypeLabels[type]}
+                        </button>
+                      )
+                    })}
+                  </div>
+                  {!canUseEndOfMonth ? (
+                    <p className="permission-banner">
+                      El crédito mensual solo aplica a alumnos y profesores.
+                    </p>
+                  ) : null}
+                </>
               ) : null}
 
               {!isSelfService && !selectedConsumer ? (

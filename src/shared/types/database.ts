@@ -183,6 +183,7 @@ export type Database = {
           consumer_id: number
           user_id: string | null
           status_id: number
+          payment_type: OrderPaymentType
           notes: string | null
           total: number
           created_at: string
@@ -191,6 +192,7 @@ export type Database = {
           consumer_id: number
           user_id?: string | null
           status_id: number
+          payment_type?: OrderPaymentType
           notes?: string | null
           total?: number
           created_at?: string
@@ -199,6 +201,7 @@ export type Database = {
           consumer_id?: number
           user_id?: string | null
           status_id?: number
+          payment_type?: OrderPaymentType
           notes?: string | null
           total?: number
         }
@@ -328,6 +331,118 @@ export type Database = {
           },
         ]
       }
+      account_receivables: {
+        Row: {
+          id: number
+          consumer_id: number
+          period_year: number
+          period_month: number
+          total_amount: number
+          paid_amount: number
+          balance: number
+          status: AccountReceivableStatus
+          created_at: string
+          closed_at: string | null
+        }
+        Insert: {
+          consumer_id: number
+          period_year: number
+          period_month: number
+          total_amount?: number
+          paid_amount?: number
+          balance?: number
+          status?: AccountReceivableStatus
+          created_at?: string
+          closed_at?: string | null
+        }
+        Update: {
+          consumer_id?: number
+          period_year?: number
+          period_month?: number
+          total_amount?: number
+          paid_amount?: number
+          balance?: number
+          status?: AccountReceivableStatus
+          closed_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'account_receivables_consumer_id_fkey'
+            columns: ['consumer_id']
+            isOneToOne: false
+            referencedRelation: 'consumers'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      account_receivable_details: {
+        Row: {
+          id: number
+          account_receivable_id: number
+          order_id: number
+          amount: number
+          created_at: string
+        }
+        Insert: {
+          account_receivable_id: number
+          order_id: number
+          amount: number
+          created_at?: string
+        }
+        Update: never
+        Relationships: [
+          {
+            foreignKeyName: 'account_receivable_details_account_receivable_id_fkey'
+            columns: ['account_receivable_id']
+            isOneToOne: false
+            referencedRelation: 'account_receivables'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'account_receivable_details_order_id_fkey'
+            columns: ['order_id']
+            isOneToOne: true
+            referencedRelation: 'orders'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      receivable_payments: {
+        Row: {
+          id: number
+          account_receivable_id: number
+          amount: number
+          payment_method: ReceivablePaymentMethod
+          notes: string | null
+          created_by: string
+          created_at: string
+        }
+        Insert: {
+          account_receivable_id: number
+          amount: number
+          payment_method: ReceivablePaymentMethod
+          notes?: string | null
+          created_by: string
+          created_at?: string
+        }
+        Update: never
+        Relationships: [
+          {
+            foreignKeyName: 'receivable_payments_account_receivable_id_fkey'
+            columns: ['account_receivable_id']
+            isOneToOne: false
+            referencedRelation: 'account_receivables'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'receivable_payments_created_by_fkey'
+            columns: ['created_by']
+            isOneToOne: false
+            referencedRelation: 'profiles'
+            referencedColumns: ['id']
+          },
+        ]
+      }
     }
     Views: {
       dashboard_today: {
@@ -364,7 +479,42 @@ export type Database = {
           status_name: string
           notes: string | null
           total: number
+          payment_type: OrderPaymentType
           created_at: string
+        }
+        Relationships: []
+      }
+      account_receivables_with_consumer: {
+        Row: {
+          id: number
+          consumer_id: number
+          period_year: number
+          period_month: number
+          total_amount: number
+          paid_amount: number
+          balance: number
+          status: AccountReceivableStatus
+          created_at: string
+          closed_at: string | null
+          consumer_type_code: ConsumerTypeCode
+          consumer_type_name: string
+          first_names: string
+          last_names: string
+          email: string | null
+          grade_section: string | null
+        }
+        Relationships: []
+      }
+      account_receivable_details_with_order: {
+        Row: {
+          id: number
+          account_receivable_id: number
+          order_id: number
+          amount: number
+          created_at: string
+          notes: string | null
+          payment_type: OrderPaymentType
+          order_created_at: string
         }
         Relationships: []
       }
@@ -405,6 +555,7 @@ export type Database = {
           p_consumer_id: number
           p_items: Json
           p_notes?: string | null
+          p_payment_type?: OrderPaymentType
         }
         Returns: number
       }
@@ -412,6 +563,7 @@ export type Database = {
         Args: {
           p_items: Json
           p_notes?: string | null
+          p_payment_type?: OrderPaymentType
         }
         Returns: number
       }
@@ -422,21 +574,40 @@ export type Database = {
       complete_order: {
         Args: {
           p_order_id: number
-          p_payment_method: PaymentMethod
+          p_payment_method?: PaymentMethod | null
         }
         Returns: number
       }
-      cancel_order: {
-        Args: {
-          p_order_id: number
+        cancel_order: {
+          Args: {
+            p_order_id: number
+          }
+          Returns: void
         }
-        Returns: void
+        update_order_payment_type: {
+          Args: {
+            p_order_id: number
+            p_payment_type: OrderPaymentType
+          }
+          Returns: void
+        }
+        register_receivable_payment: {
+          Args: {
+            p_account_receivable_id: number
+            p_amount: number
+          p_payment_method: ReceivablePaymentMethod
+          p_notes?: string | null
+        }
+        Returns: number
       }
     }
   }
 }
 
-export type PaymentMethod = 'cash' | 'yape' | 'plin'
+export type PaymentMethod = 'cash' | 'yape' | 'plin' | 'credit'
+export type ReceivablePaymentMethod = 'cash' | 'yape' | 'plin'
 export type ConsumerTypeCode = 'STUDENT' | 'TEACHER'
 export type OrderStatusCode = 'PENDING' | 'COMPLETED' | 'CANCELLED'
+export type OrderPaymentType = 'IMMEDIATE' | 'END_OF_MONTH'
+export type AccountReceivableStatus = 'OPEN' | 'PARTIAL' | 'PAID'
 export type UserRole = 'admin' | 'seller' | 'profesor' | 'alumno'

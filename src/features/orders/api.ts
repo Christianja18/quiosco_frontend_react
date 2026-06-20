@@ -5,6 +5,7 @@ import type {
   ConsumerInsert,
   ConsumerType,
   OrderDetail,
+  OrderPaymentType,
   OrderWithDetails,
   PaymentMethod,
   SaleItemInput,
@@ -99,6 +100,7 @@ export const createOrder = async (
   consumerId: number,
   items: ReadonlyArray<SaleItemInput>,
   notes: string | null,
+  paymentType: OrderPaymentType,
 ): Promise<number> => {
   const payload: Json = items.map((item) => ({
     product_id: item.productId,
@@ -109,6 +111,7 @@ export const createOrder = async (
     p_consumer_id: consumerId,
     p_items: payload,
     p_notes: notes,
+    p_payment_type: paymentType,
   })
 
   if (error) {
@@ -121,6 +124,7 @@ export const createOrder = async (
 export const reserveOrder = async (
   items: ReadonlyArray<SaleItemInput>,
   notes: string | null,
+  paymentType: OrderPaymentType,
 ): Promise<number> => {
   const payload: Json = items.map((item) => ({
     product_id: item.productId,
@@ -130,6 +134,7 @@ export const reserveOrder = async (
   const { data, error } = await supabase.rpc('reserve_order', {
     p_items: payload,
     p_notes: notes,
+    p_payment_type: paymentType,
   })
 
   if (error) {
@@ -141,7 +146,7 @@ export const reserveOrder = async (
 
 export const completeOrder = async (
   orderId: number,
-  paymentMethod: PaymentMethod,
+  paymentMethod: PaymentMethod | null,
 ): Promise<number> => {
   const { data, error } = await supabase.rpc('complete_order', {
     p_order_id: orderId,
@@ -158,6 +163,20 @@ export const completeOrder = async (
 export const cancelOrder = async (orderId: number): Promise<void> => {
   const { error } = await supabase.rpc('cancel_order', {
     p_order_id: orderId,
+  })
+
+  if (error) {
+    throw new Error(error.message)
+  }
+}
+
+export const updateOrderPaymentType = async (
+  orderId: number,
+  paymentType: OrderPaymentType,
+): Promise<void> => {
+  const { error } = await supabase.rpc('update_order_payment_type', {
+    p_order_id: orderId,
+    p_payment_type: paymentType,
   })
 
   if (error) {
