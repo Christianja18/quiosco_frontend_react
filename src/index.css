@@ -109,3 +109,36 @@ td {
 #root {
   min-height: 100svh;
 }
+
+@media (max-width: 760px) {
+  h1 {
+    font-size: 26px;
+  }
+
+  h2 {
+    font-size: 17px;
+  }
+
+  th,
+  td {
+    padding: 11px 10px;
+    white-space: normal;
+    vertical-align: top;
+  }
+}
+
+@media (max-width: 620px) {
+  h1 {
+    font-size: 24px;
+  }
+
+  body {
+    font-size: 15px;
+  }
+
+  th,
+  td {
+    padding: 10px 8px;
+    font-size: 13px;
+  }
+}
