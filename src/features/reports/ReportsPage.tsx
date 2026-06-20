@@ -1,5 +1,12 @@
 import { useQuery } from '@tanstack/react-query'
-import { BarChart3, ClipboardList, PackageSearch, ReceiptText } from 'lucide-react'
+import {
+  BarChart3,
+  ClipboardList,
+  PackageSearch,
+  Printer,
+  ReceiptText,
+  Search,
+} from 'lucide-react'
 import { useState } from 'react'
 import {
   getReportLowStock,
@@ -14,6 +21,8 @@ const pageSize = 5
 export const ReportsPage = () => {
   const [stockPage, setStockPage] = useState(1)
   const [ordersPage, setOrdersPage] = useState(1)
+  const [ordersConsumerSearch, setOrdersConsumerSearch] = useState('')
+  const [ordersDateSearch, setOrdersDateSearch] = useState('')
   const salesQuery = useQuery({
     queryKey: ['report-sales'],
     queryFn: getReportSales,
@@ -37,14 +46,26 @@ export const ReportsPage = () => {
   const orders = ordersQuery.data ?? []
   const totalSold = sales.reduce((sum, sale) => sum + sale.total, 0)
   const stockPageCount = Math.max(1, Math.ceil(products.length / pageSize))
-  const ordersPageCount = Math.max(1, Math.ceil(orders.length / pageSize))
+  const normalizedConsumerSearch = ordersConsumerSearch.trim().toLowerCase()
+  const filteredOrders = orders.filter((order) => {
+    const matchesDate =
+      !ordersDateSearch || order.created_at.slice(0, 10) === ordersDateSearch
+    const matchesConsumer =
+      !normalizedConsumerSearch ||
+      `${order.first_names} ${order.last_names}`
+        .toLowerCase()
+        .includes(normalizedConsumerSearch)
+
+    return matchesDate && matchesConsumer
+  })
+  const ordersPageCount = Math.max(1, Math.ceil(filteredOrders.length / pageSize))
   const safeStockPage = Math.min(stockPage, stockPageCount)
   const safeOrdersPage = Math.min(ordersPage, ordersPageCount)
   const paginatedProducts = products.slice(
     (safeStockPage - 1) * pageSize,
     safeStockPage * pageSize,
   )
-  const paginatedOrders = orders.slice(
+  const paginatedOrders = filteredOrders.slice(
     (safeOrdersPage - 1) * pageSize,
     safeOrdersPage * pageSize,
   )
@@ -56,9 +77,19 @@ export const ReportsPage = () => {
           <p className="eyebrow">Reportes</p>
           <h1 id="reports-title">Resumen operativo</h1>
         </div>
+        <div className="page-actions print-hidden">
+          <button
+            className="primary-button"
+            type="button"
+            onClick={() => window.print()}
+          >
+            <Printer size={18} />
+            Imprimir reporte
+          </button>
+        </div>
       </div>
 
-      <div className="metrics-grid">
+      <div className="metrics-grid printable-report">
         <article className="metric-card">
           <span className="metric-icon">
             <ReceiptText size={22} />
@@ -88,7 +119,7 @@ export const ReportsPage = () => {
         </article>
       </div>
 
-      <div className="content-grid two-columns">
+      <div className="content-grid two-columns printable-report">
         <section className="panel">
           <div className="panel-header">
             <div>
@@ -136,7 +167,7 @@ export const ReportsPage = () => {
                  </span>
               </article>
             ))}
-            <div className="pagination-bar">
+            <div className="pagination-bar print-hidden">
               <span>
                 Página {safeStockPage} de {stockPageCount}
               </span>
@@ -163,7 +194,7 @@ export const ReportsPage = () => {
         </section>
       </div>
 
-      <section className="panel">
+      <section className="panel printable-report">
         <div className="panel-header">
           <div>
             <p className="eyebrow">Pedidos</p>
@@ -171,6 +202,38 @@ export const ReportsPage = () => {
           </div>
           <ClipboardList size={20} />
         </div>
+        <div className="list-toolbar print-hidden">
+          <label className="search-box">
+            <Search size={18} aria-hidden="true" />
+            <input
+              value={ordersConsumerSearch}
+              onChange={(event) => {
+                setOrdersConsumerSearch(event.target.value)
+                setOrdersPage(1)
+              }}
+              placeholder="Buscar consumidor"
+              aria-label="Buscar pedidos por consumidor"
+            />
+          </label>
+          <label className="search-box date-search">
+            <input
+              type="date"
+              value={ordersDateSearch}
+              onChange={(event) => {
+                setOrdersDateSearch(event.target.value)
+                setOrdersPage(1)
+              }}
+              aria-label="Buscar pedidos por fecha"
+            />
+          </label>
+        </div>
+        {filteredOrders.length === 0 ? (
+          <p className="empty-state">
+            {ordersDateSearch
+              ? 'No hay pedidos para la fecha seleccionada.'
+              : 'Aún no hay pedidos registrados.'}
+          </p>
+        ) : (
         <div className="table-wrap">
           <table>
             <thead>
@@ -198,7 +261,7 @@ export const ReportsPage = () => {
               ))}
             </tbody>
           </table>
-          <div className="pagination-bar">
+          <div className="pagination-bar print-hidden">
             <span>
               Página {safeOrdersPage} de {ordersPageCount}
             </span>
@@ -222,6 +285,7 @@ export const ReportsPage = () => {
             </button>
           </div>
         </div>
+        )}
       </section>
     </section>
   )

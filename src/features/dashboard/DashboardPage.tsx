@@ -1,10 +1,19 @@
 import { useQuery } from '@tanstack/react-query'
-import { AlertTriangle, Clock3, PackageSearch, ReceiptText } from 'lucide-react'
+import {
+  AlertTriangle,
+  CalendarDays,
+  Clock3,
+  PackageSearch,
+  ReceiptText,
+} from 'lucide-react'
 import { useState } from 'react'
+import { Modal } from '../../shared/components/Modal'
+import type { Sale } from '../../shared/types/domain'
 import {
   getDashboardToday,
   getLowStockProducts,
   getRecentSales,
+  getSaleDetail,
 } from './api'
 import { formatCurrency, formatDateTime, paymentMethodLabels } from '../../shared/utils/format'
 
@@ -12,6 +21,9 @@ const pageSize = 5
 
 export const DashboardPage = () => {
   const [recentSalesPage, setRecentSalesPage] = useState(1)
+  const [recentSalesDateSearch, setRecentSalesDateSearch] = useState('')
+  const [selectedSaleId, setSelectedSaleId] = useState<number | null>(null)
+
   const todayQuery = useQuery({
     queryKey: ['dashboard-today'],
     queryFn: getDashboardToday,
@@ -27,15 +39,32 @@ export const DashboardPage = () => {
     queryFn: getRecentSales,
   })
 
+  const saleDetailQuery = useQuery({
+    queryKey: ['sale-detail', selectedSaleId],
+    queryFn: () => getSaleDetail(selectedSaleId ?? 0),
+    enabled: selectedSaleId !== null,
+  })
+
   const today = todayQuery.data
   const lowStock = lowStockQuery.data ?? []
   const recentSales = recentSalesQuery.data ?? []
-  const recentSalesPageCount = Math.max(1, Math.ceil(recentSales.length / pageSize))
+  const filteredRecentSales = recentSales.filter(
+    (sale) =>
+      !recentSalesDateSearch || sale.created_at.slice(0, 10) === recentSalesDateSearch,
+  )
+  const recentSalesPageCount = Math.max(
+    1,
+    Math.ceil(filteredRecentSales.length / pageSize),
+  )
   const safeRecentSalesPage = Math.min(recentSalesPage, recentSalesPageCount)
-  const paginatedRecentSales = recentSales.slice(
+  const paginatedRecentSales = filteredRecentSales.slice(
     (safeRecentSalesPage - 1) * pageSize,
     safeRecentSalesPage * pageSize,
   )
+  const selectedSale = recentSales.find((sale) => sale.id === selectedSaleId) ?? null
+
+  const getSaleBuyerLabel = (sale: Sale) =>
+    sale.order_id === null ? 'Venta directa' : `Pedido #${sale.order_id}`
 
   return (
     <section className="page-grid" aria-labelledby="dashboard-title">
@@ -64,9 +93,7 @@ export const DashboardPage = () => {
           <div>
             <p>Total vendido</p>
             <strong>
-              {todayQuery.isLoading
-                ? '...'
-                : formatCurrency(today?.total_sold ?? 0)}
+              {todayQuery.isLoading ? '...' : formatCurrency(today?.total_sold ?? 0)}
             </strong>
           </div>
         </article>
@@ -122,17 +149,49 @@ export const DashboardPage = () => {
             <ReceiptText size={20} />
           </div>
 
+          <div className="list-toolbar">
+            <label className="search-box date-search">
+              <CalendarDays size={18} aria-hidden="true" />
+              <input
+                type="date"
+                value={recentSalesDateSearch}
+                onChange={(event) => {
+                  setRecentSalesDateSearch(event.target.value)
+                  setRecentSalesPage(1)
+                }}
+                aria-label="Buscar ventas por fecha"
+              />
+            </label>
+          </div>
+
           {recentSalesQuery.isLoading ? (
             <p className="muted">Cargando ventas...</p>
-          ) : recentSales.length === 0 ? (
-            <p className="empty-state">Aún no hay ventas registradas.</p>
+          ) : filteredRecentSales.length === 0 ? (
+            <p className="empty-state">
+              {recentSalesDateSearch
+                ? 'No hay ventas para la fecha seleccionada.'
+                : 'Aún no hay ventas registradas.'}
+            </p>
           ) : (
             <div className="list-stack">
               {paginatedRecentSales.map((sale) => (
-                <article className="list-row" key={sale.id}>
+                <article
+                  className="list-row clickable-row"
+                  key={sale.id}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => setSelectedSaleId(sale.id)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault()
+                      setSelectedSaleId(sale.id)
+                    }
+                  }}
+                >
                   <div>
                     <strong>{formatCurrency(sale.total)}</strong>
                     <span>{formatDateTime(sale.created_at)}</span>
+                    <span>{getSaleBuyerLabel(sale)}</span>
                   </div>
                   <span className="soft-pill">
                     {paymentMethodLabels[sale.payment_method]}
@@ -170,6 +229,58 @@ export const DashboardPage = () => {
           )}
         </section>
       </div>
+
+      {selectedSale ? (
+        <Modal
+          eyebrow="Detalle"
+          title={`Venta #${selectedSale.id}`}
+          onClose={() => setSelectedSaleId(null)}
+        >
+          {saleDetailQuery.isLoading ? (
+            <p className="muted">Cargando detalle...</p>
+          ) : saleDetailQuery.data ? (
+            <>
+              <div className="order-detail-summary">
+                <span className="soft-pill">
+                  {paymentMethodLabels[saleDetailQuery.data.sale.payment_method]}
+                </span>
+                <strong>{formatCurrency(saleDetailQuery.data.sale.total)}</strong>
+                <span>{formatDateTime(saleDetailQuery.data.sale.created_at)}</span>
+              </div>
+
+              <div className="list-stack">
+                <article className="list-row">
+                  <div>
+                    <strong>Comprador</strong>
+                    <span>
+                      {saleDetailQuery.data.order
+                        ? `${saleDetailQuery.data.order.first_names} ${saleDetailQuery.data.order.last_names}`
+                        : 'Venta directa'}
+                    </span>
+                  </div>
+                  <span>
+                    {saleDetailQuery.data.order?.consumer_type_name ?? 'Mostrador'}
+                  </span>
+                </article>
+
+                {saleDetailQuery.data.items.map((item) => (
+                  <article className="list-row" key={item.id}>
+                    <div>
+                      <strong>{item.product_name ?? 'Producto no disponible'}</strong>
+                      <span>
+                        {item.quantity} x {formatCurrency(item.unit_price)}
+                      </span>
+                    </div>
+                    <span>{formatCurrency(item.subtotal)}</span>
+                  </article>
+                ))}
+              </div>
+            </>
+          ) : (
+            <p className="empty-state">No se encontró el detalle de la venta.</p>
+          )}
+        </Modal>
+      ) : null}
     </section>
   )
 }

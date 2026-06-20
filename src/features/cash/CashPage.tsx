@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { Banknote, CircleDollarSign } from 'lucide-react'
+import { Banknote, CalendarDays, CircleDollarSign } from 'lucide-react'
 import { useState } from 'react'
 import { getReportSales } from '../reports/api'
 import type { PaymentMethod, Sale } from '../../shared/types/domain'
@@ -11,38 +11,37 @@ import {
 
 const emptySales: ReadonlyArray<Sale> = []
 const pageSize = 5
-const paymentMethods: ReadonlyArray<PaymentMethod> = [
-  'cash',
-  'yape',
-  'plin',
-]
+const paymentMethods: ReadonlyArray<PaymentMethod> = ['cash', 'yape', 'plin']
 
-const isToday = (value: string): boolean => {
-  const date = new Date(value)
-  const today = new Date()
+const getLocalDateInputValue = (value: Date): string => {
+  const year = value.getFullYear()
+  const month = `${value.getMonth() + 1}`.padStart(2, '0')
+  const day = `${value.getDate()}`.padStart(2, '0')
 
-  return (
-    date.getFullYear() === today.getFullYear() &&
-    date.getMonth() === today.getMonth() &&
-    date.getDate() === today.getDate()
-  )
+  return `${year}-${month}-${day}`
 }
 
 export const CashPage = () => {
-  const [todaySalesPage, setTodaySalesPage] = useState(1)
+  const [salesPage, setSalesPage] = useState(1)
+  const [salesDateSearch, setSalesDateSearch] = useState(() =>
+    getLocalDateInputValue(new Date()),
+  )
+
   const salesQuery = useQuery({
     queryKey: ['report-sales'],
     queryFn: getReportSales,
   })
 
   const sales = salesQuery.data ?? emptySales
-  const todaySales = sales.filter((sale) => isToday(sale.created_at))
-  const total = todaySales.reduce((sum, sale) => sum + sale.total, 0)
-  const todaySalesPageCount = Math.max(1, Math.ceil(todaySales.length / pageSize))
-  const safeTodaySalesPage = Math.min(todaySalesPage, todaySalesPageCount)
-  const paginatedTodaySales = todaySales.slice(
-    (safeTodaySalesPage - 1) * pageSize,
-    safeTodaySalesPage * pageSize,
+  const filteredSales = sales.filter(
+    (sale) => !salesDateSearch || sale.created_at.slice(0, 10) === salesDateSearch,
+  )
+  const total = filteredSales.reduce((sum, sale) => sum + sale.total, 0)
+  const salesPageCount = Math.max(1, Math.ceil(filteredSales.length / pageSize))
+  const safeSalesPage = Math.min(salesPage, salesPageCount)
+  const paginatedSales = filteredSales.slice(
+    (safeSalesPage - 1) * pageSize,
+    safeSalesPage * pageSize,
   )
 
   return (
@@ -56,7 +55,7 @@ export const CashPage = () => {
 
       <p className="permission-banner">
         La base actual no tiene apertura/cierre persistente de caja. Este módulo
-        calcula el cuadre del día usando las ventas registradas.
+        calcula el cuadre según la fecha seleccionada usando las ventas registradas.
       </p>
 
       <div className="metrics-grid">
@@ -65,7 +64,7 @@ export const CashPage = () => {
             <CircleDollarSign size={22} />
           </span>
           <div>
-            <p>Total del día</p>
+            <p>Total de la fecha</p>
             <strong>{formatCurrency(total)}</strong>
           </div>
         </article>
@@ -75,7 +74,7 @@ export const CashPage = () => {
           </span>
           <div>
             <p>Operaciones</p>
-            <strong>{todaySales.length}</strong>
+            <strong>{filteredSales.length}</strong>
           </div>
         </article>
       </div>
@@ -91,7 +90,7 @@ export const CashPage = () => {
 
           <div className="list-stack">
             {paymentMethods.map((method) => {
-              const methodTotal = todaySales
+              const methodTotal = filteredSales
                 .filter((sale) => sale.payment_method === method)
                 .reduce((sum, sale) => sum + sale.total, 0)
 
@@ -99,7 +98,7 @@ export const CashPage = () => {
                 <article className="list-row" key={method}>
                   <div>
                     <strong>{paymentMethodLabels[method]}</strong>
-                    <span>Ventas del día</span>
+                    <span>Ventas de la fecha</span>
                   </div>
                   <span>{formatCurrency(methodTotal)}</span>
                 </article>
@@ -112,17 +111,32 @@ export const CashPage = () => {
           <div className="panel-header">
             <div>
               <p className="eyebrow">Historial</p>
-              <h2>Últimas ventas de hoy</h2>
+              <h2>Ventas por fecha</h2>
             </div>
+          </div>
+
+          <div className="list-toolbar">
+            <label className="search-box date-search">
+              <CalendarDays size={18} aria-hidden="true" />
+              <input
+                type="date"
+                value={salesDateSearch}
+                onChange={(event) => {
+                  setSalesDateSearch(event.target.value)
+                  setSalesPage(1)
+                }}
+                aria-label="Buscar ventas por fecha"
+              />
+            </label>
           </div>
 
           {salesQuery.isLoading ? (
             <p className="muted">Cargando ventas...</p>
-          ) : todaySales.length === 0 ? (
-            <p className="empty-state">Aún no hay ventas hoy.</p>
+          ) : filteredSales.length === 0 ? (
+            <p className="empty-state">No hay ventas para la fecha seleccionada.</p>
           ) : (
             <div className="list-stack">
-              {paginatedTodaySales.map((sale) => (
+              {paginatedSales.map((sale) => (
                 <article className="list-row" key={sale.id}>
                   <div>
                     <strong>{formatCurrency(sale.total)}</strong>
@@ -135,26 +149,22 @@ export const CashPage = () => {
               ))}
               <div className="pagination-bar">
                 <span>
-                  Página {safeTodaySalesPage} de {todaySalesPageCount}
+                  Página {safeSalesPage} de {salesPageCount}
                 </span>
                 <button
                   className="ghost-button"
                   type="button"
-                  disabled={safeTodaySalesPage === 1}
-                  onClick={() =>
-                    setTodaySalesPage((current) => Math.max(1, current - 1))
-                  }
+                  disabled={safeSalesPage === 1}
+                  onClick={() => setSalesPage((current) => Math.max(1, current - 1))}
                 >
                   Anterior
                 </button>
                 <button
                   className="ghost-button"
                   type="button"
-                  disabled={safeTodaySalesPage === todaySalesPageCount}
+                  disabled={safeSalesPage === salesPageCount}
                   onClick={() =>
-                    setTodaySalesPage((current) =>
-                      Math.min(todaySalesPageCount, current + 1),
-                    )
+                    setSalesPage((current) => Math.min(salesPageCount, current + 1))
                   }
                 >
                   Siguiente
