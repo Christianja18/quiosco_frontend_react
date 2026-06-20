@@ -526,6 +526,50 @@
   min-width: 0;
 }
 
+.input-icon {
+  min-height: 44px;
+  padding: 0 11px;
+  background: #ffffff;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.input-icon input {
+  padding-inline: 0;
+  border: 0;
+  box-shadow: none;
+  background: transparent;
+}
+
+.password-input {
+  padding-right: 6px;
+}
+
+.password-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  min-width: 36px;
+  min-height: 36px;
+  padding: 0;
+  color: var(--muted);
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  flex: 0 0 36px;
+}
+
+.password-toggle:hover {
+  color: var(--brand-strong);
+  background: var(--brand-soft);
+}
+
+.password-toggle:focus-visible {
+  outline: 2px solid rgba(200, 63, 103, 0.3);
+  outline-offset: 1px;
+}
+
 .inline-form {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 44px;
@@ -1160,6 +1204,18 @@
   .search-box {
     min-height: 46px;
     padding-inline: 12px;
+  }
+
+  .input-icon {
+    min-height: 46px;
+    padding-inline: 12px 8px;
+  }
+
+  .password-toggle {
+    width: 38px;
+    min-width: 38px;
+    min-height: 38px;
+    flex-basis: 38px;
   }
 
   .checkbox-field {

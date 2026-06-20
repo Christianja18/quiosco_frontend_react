@@ -1,8 +1,9 @@
 import { useMutation, useQuery } from '@tanstack/react-query'
-import { LockKeyhole, Mail, Save, UserPlus } from 'lucide-react'
+import { Mail, Save, UserPlus } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import tortasGabyLogo from '../../assets/tortas-gaby-logo.svg'
 import { Modal } from '../../shared/components/Modal'
+import { PasswordField } from '../../shared/components/PasswordField'
 import type { ConsumerType } from '../../shared/types/domain'
 import { getConsumerTypes } from '../orders/api'
 import { registerPublicConsumerAccount, signInWithEmail } from './api'
@@ -199,19 +200,13 @@ export const LoginPage = () => {
             </span>
           </label>
 
-          <label className="field">
-            <span>Contraseña</span>
-            <span className="input-icon">
-              <LockKeyhole size={18} aria-hidden="true" />
-              <input
-                autoComplete="current-password"
-                type="password"
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                placeholder="Tu contraseña"
-              />
-            </span>
-          </label>
+          <PasswordField
+            label="Contraseña"
+            autoComplete="current-password"
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+            placeholder="Tu contraseña"
+          />
 
           {signInMutation.isError ? (
             <p className="error-message" role="alert">
@@ -375,21 +370,19 @@ export const LoginPage = () => {
               />
             </label>
 
-            <label className="field wide">
-              <span>Contraseña de acceso</span>
-              <input
-                autoComplete="new-password"
-                type="password"
-                value={consumerForm.password}
-                onChange={(event) =>
-                  setConsumerForm((current) => ({
-                    ...current,
-                    password: event.target.value,
-                  }))
-                }
-                placeholder="Mínimo 6 caracteres"
-              />
-            </label>
+            <PasswordField
+              label="Contraseña de acceso"
+              wide
+              autoComplete="new-password"
+              value={consumerForm.password}
+              onChange={(event) =>
+                setConsumerForm((current) => ({
+                  ...current,
+                  password: event.target.value,
+                }))
+              }
+              placeholder="Mínimo 6 caracteres"
+            />
 
             {consumerTypesQuery.isError ? (
               <p className="error-message wide" role="alert">

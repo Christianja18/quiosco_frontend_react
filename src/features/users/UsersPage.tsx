@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Save, Search, UserPlus, Users } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { Modal } from '../../shared/components/Modal'
+import { PasswordField } from '../../shared/components/PasswordField'
 import type {
   Consumer,
   ConsumerType,
@@ -532,21 +533,18 @@ export const UsersPage = ({ profile }: UsersPageProps) => {
               />
             </label>
 
-            <label className="field">
-              <span>Contraseña inicial</span>
-              <input
-                autoComplete="new-password"
-                type="password"
-                value={userForm.password}
-                onChange={(event) =>
-                  setUserForm((current) => ({
-                    ...current,
-                    password: event.target.value,
-                  }))
-                }
-                placeholder="Mínimo 6 caracteres"
-              />
-            </label>
+            <PasswordField
+              label="Contraseña inicial"
+              autoComplete="new-password"
+              value={userForm.password}
+              onChange={(event) =>
+                setUserForm((current) => ({
+                  ...current,
+                  password: event.target.value,
+                }))
+              }
+              placeholder="Mínimo 6 caracteres"
+            />
 
             <label className="field wide">
               <span>Rol</span>
