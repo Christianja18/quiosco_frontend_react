@@ -102,10 +102,22 @@
   backdrop-filter: blur(10px);
 }
 
+.topbar-identity {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
 .topbar-actions {
   display: flex;
   align-items: center;
   gap: 10px;
+}
+
+.mobile-nav-toggle,
+.mobile-nav-backdrop {
+  display: none;
 }
 
 .role-badge,
@@ -1001,11 +1013,22 @@
   }
 
   .sidebar {
-    position: static;
-    height: auto;
-    padding: 12px;
-    border-right: 0;
-    border-bottom: 1px solid var(--border);
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 30;
+    width: min(82vw, 320px);
+    height: 100svh;
+    padding: 14px;
+    border-right: 1px solid var(--border);
+    border-bottom: 0;
+    box-shadow: 0 24px 54px rgba(43, 39, 31, 0.18);
+    transform: translateX(-100%);
+    transition: transform 0.22s ease;
+  }
+
+  .sidebar.mobile-open {
+    transform: translateX(0);
   }
 
   .brand {
@@ -1013,16 +1036,30 @@
   }
 
   .nav-list {
-    display: flex;
-    gap: 8px;
-    overflow-x: auto;
-    padding-bottom: 4px;
+    gap: 10px;
   }
 
   .nav-item {
+    justify-content: flex-start;
+    min-width: 0;
+  }
+
+  .mobile-nav-toggle,
+  .mobile-nav-backdrop {
+    display: inline-flex;
+  }
+
+  .mobile-nav-toggle {
     flex: 0 0 auto;
-    justify-content: center;
-    min-width: 118px;
+  }
+
+  .mobile-nav-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 20;
+    background: rgba(43, 39, 31, 0.34);
+    border: 0;
+    padding: 0;
   }
 
   .topbar {
@@ -1059,6 +1096,10 @@
   .topbar {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .topbar-identity {
+    width: 100%;
   }
 
   .topbar-actions {
@@ -1176,6 +1217,10 @@
 
   .sidebar {
     padding: 10px;
+  }
+
+  .sidebar {
+    width: min(86vw, 300px);
   }
 
   .form-grid {

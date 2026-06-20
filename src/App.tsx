@@ -3,16 +3,18 @@ import type { LucideIcon } from 'lucide-react'
 import {
   Banknote,
   ClipboardList,
-  HandCoins,
   FileBarChart,
-  PackageCheck,
+  HandCoins,
   LayoutDashboard,
   LoaderCircle,
   LogOut,
+  Menu,
   Package,
+  PackageCheck,
   Settings,
   ShoppingCart,
   Users,
+  X,
 } from 'lucide-react'
 import { useState } from 'react'
 import './App.css'
@@ -73,6 +75,7 @@ const LoadingScreen = () => (
 function App() {
   const auth = useAuth()
   const [currentView, setCurrentView] = useState<AppView>('sales')
+  const [isMobileNavOpen, setIsMobileNavOpen] = useState(false)
   const queryClient = useQueryClient()
   useProductsRealtime({ enabled: auth.status === 'authenticated' })
 
@@ -139,9 +142,26 @@ function App() {
       : 'orders'
     : currentView
 
+  const handleSelectView = (view: AppView) => {
+    setCurrentView(view)
+    setIsMobileNavOpen(false)
+  }
+
   return (
     <div className="app-shell">
-      <aside className="sidebar" aria-label="Navegación principal">
+      {isMobileNavOpen ? (
+        <button
+          className="mobile-nav-backdrop"
+          type="button"
+          aria-label="Cerrar menú"
+          onClick={() => setIsMobileNavOpen(false)}
+        />
+      ) : null}
+
+      <aside
+        className={isMobileNavOpen ? 'sidebar mobile-open' : 'sidebar'}
+        aria-label="Navegación principal"
+      >
         <div className="brand">
           <span className="brand-mark" aria-hidden="true">
             <img className="brand-logo" src={tortasGabyLogo} alt="" />
@@ -161,7 +181,7 @@ function App() {
                 className={item.id === activeView ? 'nav-item active' : 'nav-item'}
                 key={item.id}
                 type="button"
-                onClick={() => setCurrentView(item.id)}
+                onClick={() => handleSelectView(item.id)}
               >
                 <Icon size={19} />
                 {item.label}
@@ -173,9 +193,20 @@ function App() {
 
       <div className="workspace">
         <header className="topbar">
-          <div>
-            <span className="muted">Usuario activo</span>
-            <strong>{profile.full_name}</strong>
+          <div className="topbar-identity">
+            <button
+              className="icon-button mobile-nav-toggle"
+              type="button"
+              aria-label={isMobileNavOpen ? 'Ocultar menú' : 'Mostrar menú'}
+              title={isMobileNavOpen ? 'Ocultar menú' : 'Mostrar menú'}
+              onClick={() => setIsMobileNavOpen((current) => !current)}
+            >
+              {isMobileNavOpen ? <X size={20} /> : <Menu size={20} />}
+            </button>
+            <div>
+              <span className="muted">Usuario activo</span>
+              <strong>{profile.full_name}</strong>
+            </div>
           </div>
           <div className="topbar-actions">
             <span className="role-badge">{profile.role}</span>
