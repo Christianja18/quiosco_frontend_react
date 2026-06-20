@@ -71,33 +71,35 @@ const toNullableText = (value: string): string | null => {
   return trimmed.length > 0 ? trimmed : null
 }
 
-const addProductToCart = (
+const toggleProductInCart = (
   cart: ReadonlyArray<CartItem>,
   product: Product,
 ): ReadonlyArray<CartItem> => {
   const existing = cart.find((item) => item.product.id === product.id)
 
-  if (!existing) {
-    if (product.available_stock <= 0) {
-      return cart
-    }
-
-    return [...cart, { product, quantity: 1 }]
+  if (existing) {
+    return cart.filter((item) => item.product.id !== product.id)
   }
 
-  if (existing.quantity >= product.available_stock) {
+  if (product.available_stock <= 0) {
     return cart
   }
 
-  return cart.map((item) =>
+  return [...cart, { product, quantity: 1 }]
+}
+
+const increaseCartItemQuantity = (
+  cart: ReadonlyArray<CartItem>,
+  product: Product,
+): ReadonlyArray<CartItem> =>
+  cart.map((item) =>
     item.product.id === product.id
       ? {
           ...item,
-          quantity: item.quantity + 1,
+          quantity: Math.min(item.quantity + 1, product.available_stock),
         }
       : item,
   )
-}
 
 export const OrdersPage = ({ profile, userEmail }: OrdersPageProps) => {
   const queryClient = useQueryClient()
@@ -214,20 +216,45 @@ export const OrdersPage = ({ profile, userEmail }: OrdersPageProps) => {
 
   const filteredProducts = useMemo(() => {
     const normalized = productSearch.trim().toLowerCase()
+    const selectionOrder = new Map(
+      cart.map((item, index) => [item.product.id, index]),
+    )
 
-    return products.filter((product) => {
-      if (!product.is_active) {
-        return false
-      }
+    return products
+      .filter((product) => {
+        if (!product.is_active) {
+          return false
+        }
 
-      if (!normalized) {
-        return true
-      }
+        if (!normalized) {
+          return true
+        }
 
-      const categoryName = categoryById.get(product.category_id ?? 0) ?? ''
-      return `${product.name} ${categoryName}`.toLowerCase().includes(normalized)
-    })
-  }, [categoryById, productSearch, products])
+        const categoryName = categoryById.get(product.category_id ?? 0) ?? ''
+        return `${product.name} ${categoryName}`.toLowerCase().includes(normalized)
+      })
+      .sort((left, right) => {
+        const leftSelectionIndex = selectionOrder.get(left.id)
+        const rightSelectionIndex = selectionOrder.get(right.id)
+
+        if (
+          leftSelectionIndex !== undefined &&
+          rightSelectionIndex !== undefined
+        ) {
+          return leftSelectionIndex - rightSelectionIndex
+        }
+
+        if (leftSelectionIndex !== undefined) {
+          return -1
+        }
+
+        if (rightSelectionIndex !== undefined) {
+          return 1
+        }
+
+        return left.name.localeCompare(right.name, 'es')
+      })
+  }, [cart, categoryById, productSearch, products])
 
   const selectedConsumer = isSelfService
     ? undefined
@@ -803,7 +830,7 @@ export const OrdersPage = ({ profile, userEmail }: OrdersPageProps) => {
                       key={product.id}
                       disabled={isOutOfStock}
                       onClick={() =>
-                        setCart((current) => addProductToCart(current, product))
+                        setCart((current) => toggleProductInCart(current, product))
                       }
                     >
                       <span>{product.name}</span>
@@ -857,7 +884,9 @@ export const OrdersPage = ({ profile, userEmail }: OrdersPageProps) => {
                       aria-label={`Sumar ${item.product.name}`}
                       disabled={item.quantity >= item.product.available_stock}
                       onClick={() =>
-                        setCart((current) => addProductToCart(current, item.product))
+                        setCart((current) =>
+                          increaseCartItemQuantity(current, item.product),
+                        )
                       }
                     >
                       <Plus size={16} />
