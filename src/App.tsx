@@ -11,7 +11,6 @@ import {
   Menu,
   Package,
   PackageCheck,
-  Settings,
   ShoppingCart,
   Users,
   X,
@@ -30,7 +29,6 @@ import { OrdersPage } from './features/orders/OrdersPage'
 import { ProductsPage } from './features/products/ProductsPage'
 import { ReportsPage } from './features/reports/ReportsPage'
 import { SalesPage } from './features/sales/SalesPage'
-import { SettingsPage } from './features/settings/SettingsPage'
 import { UsersPage } from './features/users/UsersPage'
 import { useAppRealtime } from './shared/hooks/useAppRealtime'
 import { useProductsRealtime } from './shared/hooks/useProductsRealtime'
@@ -45,7 +43,6 @@ type AppView =
   | 'debts'
   | 'reports'
   | 'users'
-  | 'settings'
 
 type NavigationItem = {
   readonly id: AppView
@@ -63,7 +60,6 @@ const navigationItems: ReadonlyArray<NavigationItem> = [
   { id: 'debts', label: 'Deudas', icon: HandCoins },
   { id: 'reports', label: 'Reportes', icon: FileBarChart },
   { id: 'users', label: 'Usuarios', icon: Users },
-  { id: 'settings', label: 'Config.', icon: Settings },
 ]
 
 const LoadingScreen = () => (
@@ -240,7 +236,6 @@ function App() {
           {activeView === 'debts' ? <DebtsPage profile={profile} /> : null}
           {activeView === 'reports' ? <ReportsPage /> : null}
           {activeView === 'users' ? <UsersPage profile={profile} /> : null}
-          {activeView === 'settings' ? <SettingsPage /> : null}
         </main>
       </div>
     </div>
