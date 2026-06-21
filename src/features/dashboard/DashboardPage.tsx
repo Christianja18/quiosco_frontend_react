@@ -195,7 +195,7 @@ export const DashboardPage = () => {
                   setRecentSalesDateSearch(event.target.value)
                   setRecentSalesPage(1)
                 }}
-                aria-label="Buscar ventas por fecha"
+                aria-label="Buscar ventas por día"
               />
             </label>
           </div>
@@ -205,7 +205,7 @@ export const DashboardPage = () => {
           ) : filteredRecentSales.length === 0 ? (
             <p className="empty-state">
               {recentSalesDateSearch
-                ? 'No hay ventas para la fecha seleccionada.'
+                ? 'No hay ventas para el día seleccionado.'
                 : 'Aún no hay ventas registradas.'}
             </p>
           ) : (

@@ -58,7 +58,7 @@ export const DebtsPage = ({ profile }: DebtsPageProps) => {
   const [typeFilter, setTypeFilter] = useState<'ALL' | 'STUDENT' | 'TEACHER'>(
     'ALL',
   )
-  const [periodFilter, setPeriodFilter] = useState('')
+  const [dayFilter, setDayFilter] = useState('')
   const [page, setPage] = useState(1)
   const [selectedAccountId, setSelectedAccountId] = useState<number | null>(null)
   const [detailsPage, setDetailsPage] = useState(1)
@@ -134,13 +134,12 @@ export const DebtsPage = ({ profile }: DebtsPageProps) => {
         statusFilter === 'ALL' || account.status === statusFilter
       const matchesType =
         typeFilter === 'ALL' || account.consumer_type_code === typeFilter
-      const matchesPeriod =
-        !periodFilter ||
-        toPeriodValue(account.period_year, account.period_month) === periodFilter
+      const matchesDay =
+        !dayFilter || account.created_at.slice(0, 10) === dayFilter
 
-      return matchesSearch && matchesStatus && matchesType && matchesPeriod
+      return matchesSearch && matchesStatus && matchesType && matchesDay
     })
-  }, [accounts, periodFilter, search, statusFilter, typeFilter])
+  }, [accounts, dayFilter, search, statusFilter, typeFilter])
 
   const totalPendingBalance = filteredAccounts.reduce(
     (sum, account) => sum + account.balance,
@@ -245,13 +244,13 @@ export const DebtsPage = ({ profile }: DebtsPageProps) => {
           <label className="search-box date-search">
             <CalendarDays size={18} aria-hidden="true" />
             <input
-              type="month"
-              value={periodFilter}
+              type="date"
+              value={dayFilter}
               onChange={(event) => {
-                setPeriodFilter(event.target.value)
+                setDayFilter(event.target.value)
                 setPage(1)
               }}
-              aria-label="Filtrar por período"
+              aria-label="Filtrar por día"
             />
           </label>
 

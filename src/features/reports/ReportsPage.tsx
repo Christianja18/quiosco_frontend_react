@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
+﻿import { useQuery } from '@tanstack/react-query'
 import {
   BarChart3,
   ClipboardList,
@@ -223,14 +223,14 @@ export const ReportsPage = () => {
                 setOrdersDateSearch(event.target.value)
                 setOrdersPage(1)
               }}
-              aria-label="Buscar pedidos por fecha"
+              aria-label="Buscar pedidos por día"
             />
           </label>
         </div>
         {filteredOrders.length === 0 ? (
           <p className="empty-state">
             {ordersDateSearch
-              ? 'No hay pedidos para la fecha seleccionada.'
+              ? 'No hay pedidos para el día seleccionado.'
               : 'Aún no hay pedidos registrados.'}
           </p>
         ) : (
@@ -290,3 +290,4 @@ export const ReportsPage = () => {
     </section>
   )
 }
+

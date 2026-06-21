@@ -76,6 +76,18 @@ type UsersPageProps = {
   readonly profile: Profile
 }
 
+type DeleteTarget =
+  | {
+      readonly kind: 'user'
+      readonly id: string
+      readonly label: string
+    }
+  | {
+      readonly kind: 'consumer'
+      readonly id: number
+      readonly label: string
+    }
+
 const toNullableText = (value: string): string | null => {
   const trimmed = value.trim()
   return trimmed.length > 0 ? trimmed : null
@@ -98,6 +110,7 @@ export const UsersPage = ({ profile }: UsersPageProps) => {
   const [isConsumerModalOpen, setIsConsumerModalOpen] = useState(false)
   const [editingUserId, setEditingUserId] = useState<string | null>(null)
   const [editingConsumerId, setEditingConsumerId] = useState<number | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null)
   const [userForm, setUserForm] = useState<UserFormState>(initialUserForm)
   const [consumerForm, setConsumerForm] =
     useState<ConsumerFormState>(initialConsumerForm)
@@ -406,11 +419,11 @@ export const UsersPage = ({ profile }: UsersPageProps) => {
       return
     }
 
-    if (!window.confirm(`Eliminar usuario ${userProfile.full_name}?`)) {
-      return
-    }
-
-    deleteUserMutation.mutate(userProfile.id)
+    setDeleteTarget({
+      kind: 'user',
+      id: userProfile.id,
+      label: userProfile.full_name,
+    })
   }
 
   const openNewConsumerModal = () => {
@@ -448,11 +461,36 @@ export const UsersPage = ({ profile }: UsersPageProps) => {
   const requestDeactivateConsumer = (consumer: Consumer) => {
     const consumerName = `${consumer.first_names} ${consumer.last_names}`.trim()
 
-    if (!window.confirm(`Eliminar consumidor ${consumerName}?`)) {
+    setDeleteTarget({
+      kind: 'consumer',
+      id: consumer.id,
+      label: consumerName,
+    })
+  }
+
+  const closeDeleteModal = () => {
+    setDeleteTarget(null)
+  }
+
+  const confirmDelete = () => {
+    if (deleteTarget === null) {
       return
     }
 
-    deactivateConsumerMutation.mutate(consumer.id)
+    if (deleteTarget.kind === 'user') {
+      deleteUserMutation.mutate(deleteTarget.id, {
+        onSuccess: () => {
+          closeDeleteModal()
+        },
+      })
+      return
+    }
+
+    deactivateConsumerMutation.mutate(deleteTarget.id, {
+      onSuccess: () => {
+        closeDeleteModal()
+      },
+    })
   }
 
   return (
@@ -1015,6 +1053,50 @@ export const UsersPage = ({ profile }: UsersPageProps) => {
               </button>
             </div>
           </form>
+        </Modal>
+      ) : null}
+
+      {deleteTarget !== null ? (
+        <Modal
+          eyebrow="Confirmación"
+          title={
+            deleteTarget.kind === 'user'
+              ? 'Eliminar usuario'
+              : 'Eliminar consumidor'
+          }
+          onClose={closeDeleteModal}
+        >
+          <div className="confirm-dialog">
+            <p>
+              {deleteTarget.kind === 'user'
+                ? `Se eliminará el usuario ${deleteTarget.label}.`
+                : `Se eliminará el consumidor ${deleteTarget.label}.`}
+            </p>
+            <p className="muted">Esta acción no se puede deshacer.</p>
+
+            <div className="modal-actions">
+              <button
+                className="ghost-button"
+                type="button"
+                onClick={closeDeleteModal}
+              >
+                Cancelar
+              </button>
+              <button
+                className="ghost-button danger"
+                type="button"
+                disabled={
+                  deleteUserMutation.isPending || deactivateConsumerMutation.isPending
+                }
+                onClick={confirmDelete}
+              >
+                <Trash2 size={18} />
+                {deleteUserMutation.isPending || deactivateConsumerMutation.isPending
+                  ? 'Eliminando...'
+                  : 'Eliminar'}
+              </button>
+            </div>
+          </div>
         </Modal>
       ) : null}
     </section>

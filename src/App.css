@@ -148,6 +148,29 @@
   background: var(--surface-muted);
 }
 
+.category-pill {
+  gap: 6px;
+}
+
+.category-pill-remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  min-width: 16px;
+  min-height: 16px;
+  padding: 0;
+  color: var(--red);
+  background: transparent;
+  border: 0;
+  border-radius: 999px;
+}
+
+.confirm-dialog {
+  display: grid;
+  gap: 10px;
+}
+
 .stock-pill {
   color: var(--green);
   background: var(--green-soft);

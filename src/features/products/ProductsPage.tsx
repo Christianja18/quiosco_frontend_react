@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Archive, CirclePlus, Package, Pencil, Power, Save, Search } from 'lucide-react'
+import { Archive, CirclePlus, Package, Pencil, Power, Save, Search, X } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { Modal } from '../../shared/components/Modal'
 import type { Category, Product, Profile } from '../../shared/types/domain'
@@ -7,6 +7,7 @@ import { formatCurrency } from '../../shared/utils/format'
 import {
   createCategory,
   createProduct,
+  deleteCategory,
   getCategories,
   getProducts,
   updateProduct,
@@ -43,6 +44,7 @@ export const ProductsPage = ({ profile }: ProductsPageProps) => {
   const [productSearch, setProductSearch] = useState('')
   const [productPage, setProductPage] = useState(1)
   const [isProductModalOpen, setIsProductModalOpen] = useState(false)
+  const [categoryToDelete, setCategoryToDelete] = useState<Category | null>(null)
   const [editingProductId, setEditingProductId] = useState<number | null>(null)
   const [productForm, setProductForm] = useState<ProductFormState>(initialProductForm)
 
@@ -89,6 +91,15 @@ export const ProductsPage = ({ profile }: ProductsPageProps) => {
     onSuccess: () => {
       setCategoryName('')
       void queryClient.invalidateQueries({ queryKey: ['categories'] })
+    },
+  })
+
+  const deleteCategoryMutation = useMutation({
+    mutationFn: deleteCategory,
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['categories'] })
+      void queryClient.invalidateQueries({ queryKey: ['products'] })
+      void queryClient.invalidateQueries({ queryKey: ['low-stock-products'] })
     },
   })
 
@@ -165,6 +176,22 @@ export const ProductsPage = ({ profile }: ProductsPageProps) => {
     setEditingProductId(null)
     setProductForm(initialProductForm)
     saveProductMutation.reset()
+  }
+
+  const closeCategoryDeleteModal = () => {
+    setCategoryToDelete(null)
+  }
+
+  const confirmDeleteCategory = () => {
+    if (categoryToDelete === null) {
+      return
+    }
+
+    deleteCategoryMutation.mutate(categoryToDelete.id, {
+      onSuccess: () => {
+        closeCategoryDeleteModal()
+      },
+    })
   }
 
   const canCreateCategory = isAdmin && categoryName.trim().length >= 2
@@ -491,12 +518,56 @@ export const ProductsPage = ({ profile }: ProductsPageProps) => {
 
               <div className="chip-list" aria-label="Categorías registradas">
                 {categories.map((category) => (
-                  <span className="soft-pill" key={category.id}>
+                  <span className="soft-pill category-pill" key={category.id}>
                     {category.name}
+                    {isAdmin ? (
+                      <button
+                        className="category-pill-remove"
+                        type="button"
+                        aria-label={`Eliminar categoría ${category.name}`}
+                        title={`Eliminar categoría ${category.name}`}
+                        disabled={deleteCategoryMutation.isPending}
+                        onClick={() => setCategoryToDelete(category)}
+                      >
+                        <X size={12} />
+                      </button>
+                    ) : null}
                   </span>
                 ))}
               </div>
             </section>
+          </div>
+        </Modal>
+      ) : null}
+
+      {categoryToDelete !== null ? (
+        <Modal
+          eyebrow="Confirmación"
+          title="Eliminar categoría"
+          onClose={closeCategoryDeleteModal}
+        >
+          <div className="confirm-dialog">
+            <p>Se eliminará la categoría {categoryToDelete.name}.</p>
+            <p className="muted">Esta acción no se puede deshacer.</p>
+
+            <div className="modal-actions">
+              <button
+                className="ghost-button"
+                type="button"
+                onClick={closeCategoryDeleteModal}
+              >
+                Cancelar
+              </button>
+              <button
+                className="ghost-button danger"
+                type="button"
+                disabled={deleteCategoryMutation.isPending}
+                onClick={confirmDeleteCategory}
+              >
+                <X size={18} />
+                {deleteCategoryMutation.isPending ? 'Eliminando...' : 'Eliminar'}
+              </button>
+            </div>
           </div>
         </Modal>
       ) : null}

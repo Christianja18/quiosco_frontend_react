@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
+﻿import { useQuery } from '@tanstack/react-query'
 import { Banknote, CalendarDays, CircleDollarSign } from 'lucide-react'
 import { useState } from 'react'
 import { getReportSales } from '../reports/api'
@@ -55,7 +55,7 @@ export const CashPage = () => {
 
       <p className="permission-banner">
         La base actual no tiene apertura/cierre persistente de caja. Este módulo
-        calcula el cuadre según la fecha seleccionada usando las ventas registradas.
+        calcula el cuadre según el día seleccionado usando las ventas registradas.
       </p>
 
       <div className="metrics-grid">
@@ -64,7 +64,7 @@ export const CashPage = () => {
             <CircleDollarSign size={22} />
           </span>
           <div>
-            <p>Total de la fecha</p>
+            <p>Total del día</p>
             <strong>{formatCurrency(total)}</strong>
           </div>
         </article>
@@ -98,7 +98,7 @@ export const CashPage = () => {
                 <article className="list-row" key={method}>
                   <div>
                     <strong>{paymentMethodLabels[method]}</strong>
-                    <span>Ventas de la fecha</span>
+                    <span>Ventas del día</span>
                   </div>
                   <span>{formatCurrency(methodTotal)}</span>
                 </article>
@@ -111,7 +111,7 @@ export const CashPage = () => {
           <div className="panel-header">
             <div>
               <p className="eyebrow">Historial</p>
-              <h2>Ventas por fecha</h2>
+              <h2>Ventas por día</h2>
             </div>
           </div>
 
@@ -125,7 +125,7 @@ export const CashPage = () => {
                   setSalesDateSearch(event.target.value)
                   setSalesPage(1)
                 }}
-                aria-label="Buscar ventas por fecha"
+                aria-label="Buscar ventas por día"
               />
             </label>
           </div>
@@ -133,7 +133,7 @@ export const CashPage = () => {
           {salesQuery.isLoading ? (
             <p className="muted">Cargando ventas...</p>
           ) : filteredSales.length === 0 ? (
-            <p className="empty-state">No hay ventas para la fecha seleccionada.</p>
+            <p className="empty-state">No hay ventas para el día seleccionado.</p>
           ) : (
             <div className="list-stack">
               {paginatedSales.map((sale) => (
@@ -177,3 +177,4 @@ export const CashPage = () => {
     </section>
   )
 }
+

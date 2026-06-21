@@ -34,6 +34,14 @@ export const createCategory = async (name: string): Promise<Category> => {
   return data
 }
 
+export const deleteCategory = async (categoryId: number): Promise<void> => {
+  const { error } = await supabase.from('categories').delete().eq('id', categoryId)
+
+  if (error) {
+    throw new Error(error.message)
+  }
+}
+
 export const getProducts = async (): Promise<ReadonlyArray<Product>> => {
   const { data, error } = await supabase
     .from('products_available')

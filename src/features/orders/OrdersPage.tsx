@@ -481,7 +481,7 @@ export const OrdersPage = ({ profile, userEmail }: OrdersPageProps) => {
                 setOrderDateSearch(event.target.value)
                 setOrderPage(1)
               }}
-              aria-label="Buscar pedidos por fecha"
+              aria-label="Buscar pedidos por día"
             />
           </label>
         </div>
@@ -1055,5 +1055,6 @@ export const OrdersPage = ({ profile, userEmail }: OrdersPageProps) => {
     </section>
   )
 }
+
 
 
