@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+﻿import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { CalendarDays, ReceiptText, Search, Wallet } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { Modal } from '../../shared/components/Modal'
@@ -587,3 +587,4 @@ export const DebtsPage = ({ profile }: DebtsPageProps) => {
     </section>
   )
 }
+
