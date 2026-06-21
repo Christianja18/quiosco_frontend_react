@@ -1,7 +1,9 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+﻿import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   CalendarDays,
   CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
   ClipboardList,
   Minus,
   Plus,
@@ -48,6 +50,7 @@ const emptyConsumers: ReadonlyArray<Consumer> = []
 const emptyConsumerTypes: ReadonlyArray<ConsumerType> = []
 const emptyOrders: ReadonlyArray<OrderWithDetails> = []
 const pageSize = 5
+const orderProductPageSize = 12
 
 const paymentMethods: ReadonlyArray<PaymentMethod> = ['cash', 'yape', 'plin']
 const orderPaymentTypes: ReadonlyArray<OrderPaymentType> = [
@@ -110,7 +113,9 @@ export const OrdersPage = ({ profile, userEmail }: OrdersPageProps) => {
   const [orderDateSearch, setOrderDateSearch] = useState('')
   const [orderPage, setOrderPage] = useState(1)
   const [consumerSearch, setConsumerSearch] = useState('')
+  const [hasSearchedConsumer, setHasSearchedConsumer] = useState(false)
   const [productSearch, setProductSearch] = useState('')
+  const [orderProductPage, setOrderProductPage] = useState(1)
   const [selectedConsumerId, setSelectedConsumerId] = useState<number | null>(null)
   const [cart, setCart] = useState<ReadonlyArray<CartItem>>([])
   const [notes, setNotes] = useState('')
@@ -203,16 +208,18 @@ export const OrdersPage = ({ profile, userEmail }: OrdersPageProps) => {
   const filteredConsumers = useMemo(() => {
     const normalized = consumerSearch.trim().toLowerCase()
 
-    if (!normalized) {
-      return consumers.slice(0, 12)
+    if (!hasSearchedConsumer || normalized.length === 0) {
+      return []
     }
 
     return consumers.filter((consumer) =>
-      `${consumer.first_names} ${consumer.last_names} ${consumer.grade_section ?? ''}`
+      `${consumer.first_names} ${consumer.last_names} ${consumer.grade_section ?? ''} ${
+        consumer.document_number ?? ''
+      } ${consumer.email ?? ''}`
         .toLowerCase()
         .includes(normalized),
     )
-  }, [consumerSearch, consumers])
+  }, [consumerSearch, consumers, hasSearchedConsumer])
 
   const filteredProducts = useMemo(() => {
     const normalized = productSearch.trim().toLowerCase()
@@ -278,13 +285,39 @@ export const OrdersPage = ({ profile, userEmail }: OrdersPageProps) => {
     0,
   )
 
+  const orderProductPageCount = Math.max(
+    1,
+    Math.ceil(filteredProducts.length / orderProductPageSize),
+  )
+  const safeOrderProductPage = Math.min(orderProductPage, orderProductPageCount)
+  const paginatedOrderProducts = filteredProducts.slice(
+    (safeOrderProductPage - 1) * orderProductPageSize,
+    safeOrderProductPage * orderProductPageSize,
+  )
+
   const resetOrderForm = () => {
     setCart([])
     setNotes('')
+    setConsumerSearch('')
+    setHasSearchedConsumer(false)
     setProductSearch('')
+    setOrderProductPage(1)
     setOrderPaymentType('IMMEDIATE')
     if (!isSelfService) {
       setSelectedConsumerId(null)
+    }
+  }
+
+  const selectConsumer = (consumer: Consumer) => {
+    const consumerType = consumerTypeById.get(consumer.consumer_type_id)
+    const supportsEndOfMonth =
+      consumerType?.code === 'STUDENT' || consumerType?.code === 'TEACHER'
+
+    setSelectedConsumerId(consumer.id)
+    setConsumerSearch(`${consumer.first_names} ${consumer.last_names}`)
+    setHasSearchedConsumer(false)
+    if (!supportsEndOfMonth) {
+      setOrderPaymentType('IMMEDIATE')
     }
   }
 
@@ -678,7 +711,11 @@ export const OrdersPage = ({ profile, userEmail }: OrdersPageProps) => {
           title={isSelfService ? 'Nueva reserva' : 'Nuevo pedido'}
           onClose={() => setIsOrderModalOpen(false)}
         >
-          <div className="order-modal-grid">
+          <div
+            className={
+              isSelfService ? 'order-modal-grid self-service' : 'order-modal-grid'
+            }
+          >
             {!isSelfService ? (
               <section className="panel flat-panel" aria-labelledby="consumer-title">
                 <div className="panel-header">
@@ -692,48 +729,75 @@ export const OrdersPage = ({ profile, userEmail }: OrdersPageProps) => {
                   <Search size={18} aria-hidden="true" />
                   <input
                     value={consumerSearch}
-                    onChange={(event) => setConsumerSearch(event.target.value)}
-                    placeholder="Buscar consumidor"
+                    onChange={(event) => {
+                      setConsumerSearch(event.target.value)
+                      setHasSearchedConsumer(false)
+                      setSelectedConsumerId(null)
+                      setOrderPaymentType('IMMEDIATE')
+                    }}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter') {
+                        event.preventDefault()
+                        setHasSearchedConsumer(true)
+                      }
+                    }}
+                    placeholder="Buscar por nombre o apellido"
+                  />
+                  <button
+                    className="password-toggle"
+                    type="button"
+                    aria-label="Buscar consumidor"
+                    onClick={() => setHasSearchedConsumer(true)}
+                  >
+                    <Search size={18} />
+                  </button>
+                </label>
+
+                <label className="field">
+                  <span>Consumidor seleccionado</span>
+                  <input
+                    value={
+                      selectedConsumer
+                        ? `${selectedConsumer.first_names} ${selectedConsumer.last_names}`
+                        : ''
+                    }
+                    placeholder="Selecciona un consumidor desde la búsqueda"
+                    disabled
+                    readOnly
                   />
                 </label>
 
-                <div className="consumer-list">
-                  {filteredConsumers.length === 0 ? (
-                    <p className="empty-state">
-                      No hay consumidores con ese nombre. Regístralos desde Usuarios.
-                    </p>
-                  ) : (
-                    filteredConsumers.map((consumer) => (
-                      <button
-                        className={
-                          consumer.id === selectedConsumerId
-                            ? 'consumer-option active'
-                            : 'consumer-option'
-                        }
-                        type="button"
-                        key={consumer.id}
-                        onClick={() => {
-                          const consumerType = consumerTypeById.get(
-                            consumer.consumer_type_id,
-                          )
-                          const supportsEndOfMonth =
-                            consumerType?.code === 'STUDENT' ||
-                            consumerType?.code === 'TEACHER'
-
-                          setSelectedConsumerId(consumer.id)
-                          if (!supportsEndOfMonth) {
-                            setOrderPaymentType('IMMEDIATE')
+                {hasSearchedConsumer ? (
+                  <div className="consumer-list">
+                    {filteredConsumers.length === 0 ? (
+                      <p className="empty-state">
+                        No hay consumidores con ese nombre. Regístralos desde Usuarios.
+                      </p>
+                    ) : (
+                      filteredConsumers.map((consumer) => (
+                        <button
+                          className={
+                            consumer.id === selectedConsumerId
+                              ? 'consumer-option active'
+                              : 'consumer-option'
                           }
-                        }}
-                      >
-                        <strong>
-                          {consumer.last_names}, {consumer.first_names}
-                        </strong>
-                      <span>{consumer.grade_section ?? 'Sin grado/sección'}</span>
-                      </button>
-                    ))
-                  )}
-                </div>
+                          type="button"
+                          key={consumer.id}
+                          onClick={() => selectConsumer(consumer)}
+                        >
+                          <strong>
+                            {consumer.last_names}, {consumer.first_names}
+                          </strong>
+                          <span>{consumer.grade_section ?? 'Sin grado/sección'}</span>
+                        </button>
+                      ))
+                    )}
+                  </div>
+                ) : (
+                  <p className="empty-state">
+                    Busca por nombre o apellido y luego selecciona el consumidor.
+                  </p>
+                )}
               </section>
             ) : (
               <>
@@ -812,38 +876,81 @@ export const OrdersPage = ({ profile, userEmail }: OrdersPageProps) => {
                 <Search size={18} aria-hidden="true" />
                 <input
                   value={productSearch}
-                  onChange={(event) => setProductSearch(event.target.value)}
+                  onChange={(event) => {
+                    setProductSearch(event.target.value)
+                    setOrderProductPage(1)
+                  }}
                   placeholder="Buscar producto"
                 />
               </label>
 
-              <div className="product-grid compact">
-                {filteredProducts.map((product) => {
-                  const cartItem = cart.find((item) => item.product.id === product.id)
-                  const isSelected = cartItem !== undefined
-                  const isOutOfStock = product.available_stock <= 0
+              <div className="product-carousel">
+                {filteredProducts.length > orderProductPageSize ? (
+                  <button
+                    className="product-carousel-nav left"
+                    type="button"
+                    aria-label="Ver productos anteriores"
+                    disabled={safeOrderProductPage === 1}
+                    onClick={() =>
+                      setOrderProductPage((current) => Math.max(1, current - 1))
+                    }
+                  >
+                    <ChevronLeft size={20} />
+                  </button>
+                ) : null}
 
-                  return (
-                    <button
-                      className={isSelected ? 'product-tile active' : 'product-tile'}
-                      type="button"
-                      key={product.id}
-                      disabled={isOutOfStock}
-                      onClick={() =>
-                        setCart((current) => toggleProductInCart(current, product))
-                      }
-                    >
-                      <span>{product.name}</span>
-                      <strong>{formatCurrency(product.price)}</strong>
-                      <small>
-                        {categoryById.get(product.category_id ?? 0) ?? 'Sin categoría'} -{' '}
-                        {product.available_stock} disp.
-                        {isSelected ? ` · ${cartItem.quantity} en pedido` : ''}
-                      </small>
-                    </button>
-                  )
-                })}
+                <div className="product-grid compact">
+                  {paginatedOrderProducts.map((product) => {
+                    const cartItem = cart.find((item) => item.product.id === product.id)
+                    const isSelected = cartItem !== undefined
+                    const isOutOfStock = product.available_stock <= 0
+
+                    return (
+                      <button
+                        className={isSelected ? 'product-tile active' : 'product-tile'}
+                        type="button"
+                        key={product.id}
+                        disabled={isOutOfStock}
+                        onClick={() =>
+                          setCart((current) => toggleProductInCart(current, product))
+                        }
+                      >
+                        <span>{product.name}</span>
+                        <strong>{formatCurrency(product.price)}</strong>
+                        <small>
+                          {categoryById.get(product.category_id ?? 0) ?? 'Sin categoría'} -{' '}
+                          {product.available_stock} disp.
+                          {isSelected ? ` · ${cartItem.quantity} en pedido` : ''}
+                        </small>
+                      </button>
+                    )
+                  })}
+                </div>
+
+                {filteredProducts.length > orderProductPageSize ? (
+                  <button
+                    className="product-carousel-nav right"
+                    type="button"
+                    aria-label="Ver más productos"
+                    disabled={safeOrderProductPage === orderProductPageCount}
+                    onClick={() =>
+                      setOrderProductPage((current) =>
+                        Math.min(orderProductPageCount, current + 1),
+                      )
+                    }
+                  >
+                    <ChevronRight size={20} />
+                  </button>
+                ) : null}
               </div>
+
+              {filteredProducts.length > orderProductPageSize ? (
+                <div className="pagination-bar">
+                  <span>
+                    Pagina {safeOrderProductPage} de {orderProductPageCount}
+                  </span>
+                </div>
+              ) : null}
             </section>
           </div>
 
@@ -948,3 +1055,5 @@ export const OrdersPage = ({ profile, userEmail }: OrdersPageProps) => {
     </section>
   )
 }
+
+

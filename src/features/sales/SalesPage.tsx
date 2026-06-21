@@ -1,8 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Minus, Plus, Search, ShoppingCart, Trash2 } from 'lucide-react'
+import {
+  ChevronLeft,
+  ChevronRight,
+  Minus,
+  Plus,
+  Search,
+  ShoppingCart,
+  Trash2,
+} from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
-import { getCategories, getProducts } from '../products/api'
-import { registerSale } from './api'
 import { formatCurrency, paymentMethodLabels } from '../../shared/utils/format'
 import type {
   CartItem,
@@ -10,15 +16,13 @@ import type {
   PaymentMethod,
   Product,
 } from '../../shared/types/domain'
+import { getCategories, getProducts } from '../products/api'
+import { registerSale } from './api'
 
-const paymentMethods: ReadonlyArray<PaymentMethod> = [
-  'cash',
-  'yape',
-  'plin',
-]
-
+const paymentMethods: ReadonlyArray<PaymentMethod> = ['cash', 'yape', 'plin']
 const emptyProducts: ReadonlyArray<Product> = []
 const emptyCategories: ReadonlyArray<Category> = []
+const productPageSize = 12
 
 const addProductToCart = (
   cart: ReadonlyArray<CartItem>,
@@ -43,6 +47,7 @@ const addProductToCart = (
 export const SalesPage = () => {
   const queryClient = useQueryClient()
   const [search, setSearch] = useState('')
+  const [productPage, setProductPage] = useState(1)
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash')
   const [cart, setCart] = useState<ReadonlyArray<CartItem>>([])
 
@@ -83,6 +88,16 @@ export const SalesPage = () => {
         .includes(normalizedSearch)
     })
   }, [categoryById, products, search])
+
+  const productPageCount = Math.max(
+    1,
+    Math.ceil(availableProducts.length / productPageSize),
+  )
+  const safeProductPage = Math.min(productPage, productPageCount)
+  const paginatedProducts = availableProducts.slice(
+    (safeProductPage - 1) * productPageSize,
+    safeProductPage * productPageSize,
+  )
 
   const total = cart.reduce(
     (sum, item) => sum + item.quantity * item.product.price,
@@ -137,7 +152,10 @@ export const SalesPage = () => {
           <Search size={18} aria-hidden="true" />
           <input
             value={search}
-            onChange={(event) => setSearch(event.target.value)}
+            onChange={(event) => {
+              setSearch(event.target.value)
+              setProductPage(1)
+            }}
             placeholder="Buscar por producto o categoría"
           />
         </label>
@@ -147,23 +165,67 @@ export const SalesPage = () => {
         ) : availableProducts.length === 0 ? (
           <p className="empty-state">No hay productos activos con stock para vender.</p>
         ) : (
-          <div className="product-grid">
-            {availableProducts.map((product) => (
-              <button
-                className="product-tile"
-                type="button"
-                key={product.id}
-                onClick={() => setCart((current) => addProductToCart(current, product))}
-              >
-                <span>{product.name}</span>
-                <strong>{formatCurrency(product.price)}</strong>
-                <small>
-                  {categoryById.get(product.category_id ?? 0) ?? 'Sin categoría'} ·{' '}
-                  {product.available_stock} disp.
-                </small>
-              </button>
-            ))}
-          </div>
+          <>
+            <div className="product-carousel">
+              {availableProducts.length > productPageSize ? (
+                <button
+                  aria-label="Ver productos anteriores"
+                  className="product-carousel-nav left"
+                  type="button"
+                  disabled={safeProductPage === 1}
+                  onClick={() =>
+                    setProductPage((current) => Math.max(1, current - 1))
+                  }
+                >
+                  <ChevronLeft size={20} />
+                </button>
+              ) : null}
+
+              <div className="product-grid">
+                {paginatedProducts.map((product) => (
+                  <button
+                    className="product-tile"
+                    type="button"
+                    key={product.id}
+                    onClick={() =>
+                      setCart((current) => addProductToCart(current, product))
+                    }
+                  >
+                    <span>{product.name}</span>
+                    <strong>{formatCurrency(product.price)}</strong>
+                    <small>
+                      {categoryById.get(product.category_id ?? 0) ?? 'Sin categoría'} -{' '}
+                      {product.available_stock} disp.
+                    </small>
+                  </button>
+                ))}
+              </div>
+
+              {availableProducts.length > productPageSize ? (
+                <button
+                  aria-label="Ver mas productos"
+                  className="product-carousel-nav right"
+                  type="button"
+                  disabled={safeProductPage === productPageCount}
+                  onClick={() =>
+                    setProductPage((current) =>
+                      Math.min(productPageCount, current + 1),
+                    )
+                  }
+                >
+                  <ChevronRight size={20} />
+                </button>
+              ) : null}
+            </div>
+
+            {availableProducts.length > productPageSize ? (
+              <div className="pagination-bar">
+                <span>
+                  Pagina {safeProductPage} de {productPageCount}
+                </span>
+              </div>
+            ) : null}
+          </>
         )}
       </section>
 
