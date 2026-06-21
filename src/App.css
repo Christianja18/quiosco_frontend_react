@@ -220,6 +220,10 @@
   margin-bottom: 0;
 }
 
+.debts-page.self-service .consumer-search-box {
+  display: none;
+}
+
 .eyebrow {
   color: var(--brand-strong);
   font-size: 12px;
@@ -373,12 +377,17 @@
 
 .cart-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(240px, 320px) 110px;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
   gap: 12px;
   min-height: 56px;
   padding: 10px 0;
   border-bottom: 1px solid var(--border);
+}
+
+.cart-row > :first-child {
+  min-width: 0;
+  grid-column: 1;
 }
 
 .list-row:last-child,
@@ -394,9 +403,11 @@
 }
 
 .cart-row > strong:last-child {
-  min-width: 92px;
+  min-width: 0;
+  grid-column: 3;
   text-align: right;
   align-self: center;
+  justify-self: end;
 }
 
 .list-row span,

@@ -180,7 +180,10 @@ export const DebtsPage = ({ profile }: DebtsPageProps) => {
   }
 
   return (
-    <section className="page-grid" aria-labelledby="debts-title">
+    <section
+      className={`page-grid debts-page${canOperate ? '' : ' self-service'}`}
+      aria-labelledby="debts-title"
+    >
       <div className="page-heading">
         <div>
           <p className="eyebrow">Cobranza</p>
@@ -225,17 +228,19 @@ export const DebtsPage = ({ profile }: DebtsPageProps) => {
         </div>
 
         <div className="list-toolbar">
-          <label className="search-box">
-            <Search size={18} aria-hidden="true" />
-            <input
-              value={search}
-              onChange={(event) => {
-                setSearch(event.target.value)
-                setPage(1)
-              }}
-              placeholder="Buscar consumidor"
-            />
-          </label>
+          {canOperate ? (
+            <label className="search-box consumer-search-box">
+              <Search size={18} aria-hidden="true" />
+              <input
+                value={search}
+                onChange={(event) => {
+                  setSearch(event.target.value)
+                  setPage(1)
+                }}
+                placeholder="Buscar consumidor"
+              />
+            </label>
+          ) : null}
 
           <label className="search-box date-search">
             <CalendarDays size={18} aria-hidden="true" />
